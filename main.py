@@ -1,7 +1,6 @@
 """
 Netzy - Windows Ağ Sıfırlama ve Sistem Onarım Aracı
-Kullanıcı referans görseline birebir sadık kart tasarımı.
-Seçimsiz, doğrudan gösterim ve sıralı çalıştırma.
+Liste yerine yuvarlak adımlarla (dairesel düğümler) tasarlanmış modern arayüz.
 """
 
 import os
@@ -32,71 +31,80 @@ ICO_PATH = os.path.join(APP_DIR, "logo.ico")
 # Windows konsol OEM kod sayfası (Türkçe için cp857)
 OEM_CODEPAGE = f"cp{ctypes.windll.kernel32.GetOEMCP()}" if hasattr(ctypes, "windll") else "utf-8"
 
-# Referans görseldeki liste ve eklenen gereksinimler
-ACTIONS = [
+# 9 Adım — Liste değil, dairesel düğümlerle gösterilecek işlemler
+OPERATIONS = [
     {
         "id": "winsock",
-        "title": "Winsock Sıfırla (netsh winsock reset)",
-        "desc": "Ağ soket kütüphanesini fabrika ayarlarına döndürür",
+        "name": "Winsock",
+        "icon": "🔌",
+        "desc": "Winsock kataloğu sıfırlanıyor...",
         "type": "cmd",
         "cmd": "netsh winsock reset",
     },
     {
         "id": "tcpip",
-        "title": "TCP/IP Stack Sıfırla",
-        "desc": "TCP/IP protokol yığınını sıfırlar, bağlantı sorunlarını giderir",
+        "name": "TCP/IP",
+        "icon": "🌐",
+        "desc": "TCP/IP yığını sıfırlanıyor...",
         "type": "cmd",
         "cmd": "netsh int ip reset",
         "extra_cmds": ["netsh int ipv4 reset", "netsh int ipv6 reset"],
     },
     {
         "id": "firewall",
-        "title": "Windows Güvenlik Duvarını Sıfırla",
-        "desc": "Güvenlik duvarı kurallarını varsayılan ayarlara döndürür",
+        "name": "Güvenlik Duvarı",
+        "icon": "🛡️",
+        "desc": "Windows Güvenlik Duvarı kuralları sıfırlanıyor...",
         "type": "cmd",
         "cmd": "netsh advfirewall reset",
     },
     {
-        "id": "dns_service",
-        "title": "DNS İstemci Servisini Yeniden Başlat",
-        "desc": "DNS çözümleme servisini ve önbelleğini yeniler",
+        "id": "dns",
+        "name": "DNS Servisi",
+        "icon": "📡",
+        "desc": "DNS önbelleği ve kayıtları temizleniyor...",
         "type": "cmd",
         "cmd": "ipconfig /flushdns",
         "extra_cmds": ['powershell -Command "Clear-DnsClientCache"', "ipconfig /registerdns"],
     },
     {
-        "id": "dhcp_service",
-        "title": "DHCP İstemci Servisini Yeniden Başlat",
-        "desc": "IP adresi otomatik alma servisini yeniden başlatır",
+        "id": "dhcp",
+        "name": "DHCP Servisi",
+        "icon": "📶",
+        "desc": "DHCP istemci servisi yeniden başlatılıyor...",
         "type": "cmd",
         "cmd": 'powershell -Command "Restart-Service -Name Dhcp -Force -ErrorAction SilentlyContinue"',
     },
     {
-        "id": "adapter_restart",
-        "title": "Ağ Adaptörlerini Yeniden Başlat",
-        "desc": "Aktif ağ adaptörlerini devre dışı bırakıp yeniden etkinleştirir",
+        "id": "adapter",
+        "name": "Ağ Adaptörü",
+        "icon": "⚡",
+        "desc": "Aktif ağ adaptörleri yeniden başlatılıyor...",
         "type": "cmd",
         "cmd": 'powershell -Command "Get-NetAdapter | Where-Object Status -eq \'Up\' | Restart-NetAdapter -Confirm:$false"',
     },
     {
         "id": "netbios",
-        "title": "NetBIOS Önbelleğini Temizle",
-        "desc": "NetBIOS ad önbelleğini temizler ve LMHOSTS dosyasını yeniden yükler",
+        "name": "NetBIOS",
+        "icon": "🏷️",
+        "desc": "NetBIOS önbelleği temizleniyor...",
         "type": "cmd",
         "cmd": "nbtstat -R",
         "extra_cmds": ["nbtstat -RR"],
     },
     {
         "id": "arp",
-        "title": "ARP Cache Temizliği",
-        "desc": "ARP tablosunu ve IP-fiziksel adres eşleme önbelleğini temizler",
+        "name": "ARP Cache",
+        "icon": "🔄",
+        "desc": "ARP adresi önbelleği temizleniyor...",
         "type": "cmd",
         "cmd": "netsh interface ip delete arpcache",
     },
     {
-        "id": "temp_cleanup",
-        "title": "Geçici Dosyaları Temizle (Temp Cleanup)",
-        "desc": "%TEMP%, Windows Temp ve Prefetch geçici sistem dosyalarını temizler",
+        "id": "temp",
+        "name": "Geçici Dosya",
+        "icon": "🧹",
+        "desc": "Geçici sistem dosyaları temizleniyor...",
         "type": "python",
         "handler": "clean_temp_files",
     },
@@ -183,7 +191,7 @@ class TermsModal(ctk.CTkToplevel):
         super().__init__(parent)
         self.on_accept = on_accept
         self.title("Netzy — Kullanım Koşulları")
-        self.geometry("560x470")
+        self.geometry("540x440")
         self.resizable(False, False)
         self.configure(fg_color="#0D1525")
 
@@ -191,35 +199,35 @@ class TermsModal(ctk.CTkToplevel):
         self.grab_set()
 
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.header_frame.pack(fill="x", padx=24, pady=(20, 10))
+        self.header_frame.pack(fill="x", padx=20, pady=(18, 8))
 
         if os.path.exists(LOGO_PATH):
             try:
                 logo_pil = Image.open(LOGO_PATH)
-                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(40, 40))
+                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(36, 36))
                 self.logo_lbl = ctk.CTkLabel(self.header_frame, image=self.logo_img, text="")
-                self.logo_lbl.pack(side="left", padx=(0, 12))
+                self.logo_lbl.pack(side="left", padx=(0, 10))
             except Exception:
                 pass
 
         self.title_lbl = ctk.CTkLabel(
             self.header_frame,
             text="Netzy'ye Hoş Geldiniz",
-            font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"),
             text_color="#F8FAFC",
         )
         self.title_lbl.pack(side="left")
 
         terms_text = (
             "Netzy; Windows 10 ve 11 işletim sistemlerinde ağ yığınını sıfırlamak, "
-            "bağlantı sorunlarını gidermek, DNS ve ARP önbelleğini tazelemek ve "
+            "bağlantı sorunlarını gidermek, DNS/ARP önbelleklerini tazelemek ve "
             "sistem geçici dosyalarını temizlemek amacıyla geliştirilmiş açık kaynaklı bir araçtır.\n\n"
             "Önemli Hatırlatmalar ve Koşullar:\n"
             "1. Yönetici Yetkisi: Winsock, TCP/IP ve Güvenlik Duvarı gibi çekirdek düzeyindeki "
             "işlemlerin uygulanabilmesi için Yönetici hakları gereklidir.\n"
-            "2. Geçici Bağlantı Kesintisi: Adaptör yeniden başlatma adımları esnasında internet "
+            "2. Geçici Bağlantı Kesintisi: Adaptör yenileme adımları esnasında internet "
             "bağlantınız birkaç saniye kesilip otomatik olarak tekrar bağlanacaktır.\n"
-            "3. Açık Kaynak & Lisans: Bu yazılım MIT Lisansı altında 'OLDUĞU GİBİ' (AS IS) sunulmaktadır.\n"
+            "3. Açık Kaynak & Lisans: Bu yazılım MIT Lisansı altında 'OLDUĞU GİBİ' sunulmaktadır.\n"
             "4. Sistem Yeniden Başlatma: Protokol sıfırlamalarının tam geçerlilik kazanması için "
             "işlemler bittiğinde bilgisayarınızı yeniden başlatmanız önerilir."
         )
@@ -233,18 +241,18 @@ class TermsModal(ctk.CTkToplevel):
             border_color="#1E2C44",
             corner_radius=8,
         )
-        self.textbox.pack(fill="both", expand=True, padx=24, pady=(0, 15))
+        self.textbox.pack(fill="both", expand=True, padx=20, pady=(0, 12))
         self.textbox.insert("1.0", terms_text)
         self.textbox.configure(state="disabled")
 
         self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.btn_frame.pack(fill="x", padx=24, pady=(0, 20))
+        self.btn_frame.pack(fill="x", padx=20, pady=(0, 16))
 
         self.accept_btn = ctk.CTkButton(
             self.btn_frame,
             text="Kabul Ediyorum ve Başla",
-            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-            height=44,
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            height=40,
             corner_radius=8,
             fg_color="#2563EB",
             hover_color="#1D4ED8",
@@ -266,10 +274,10 @@ class NetzyApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # Kısa ve sade başlık: Netzy
+        # Sade ve kısa başlık
         self.title("Netzy")
-        self.geometry("620x720")
-        self.minsize(580, 640)
+        self.geometry("640x680")
+        self.minsize(600, 620)
         self.configure(fg_color="#0D1525")
 
         # Uygulama Simgesi
@@ -281,7 +289,7 @@ class NetzyApp(ctk.CTk):
 
         self.is_running = False
         self._stop_net_thread = False
-        self.card_widgets = []
+        self.circle_widgets = []
 
         self._build_ui()
         self._start_network_monitor()
@@ -300,13 +308,13 @@ class NetzyApp(ctk.CTk):
 
     def _build_ui(self):
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True, padx=20, pady=16)
+        self.main_container.pack(fill="both", expand=True, padx=22, pady=18)
 
         # ==========================================
         # 1. ÜST BAR (Header)
         # ==========================================
         self.header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.header_frame.pack(fill="x", pady=(0, 12))
+        self.header_frame.pack(fill="x", pady=(0, 14))
 
         # Sol: Logo ve İsim
         self.brand_frame = ctk.CTkFrame(self.header_frame, fg_color="transparent")
@@ -399,12 +407,12 @@ class NetzyApp(ctk.CTk):
         # 3. BAŞLAT BUTONU & PROGRESS BAR
         # ==========================================
         self.action_panel = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.action_panel.pack(fill="x", pady=(0, 10))
+        self.action_panel.pack(fill="x", pady=(0, 16))
 
         self.start_btn = ctk.CTkButton(
             self.action_panel,
             text="⚡ BAŞLAT",
-            height=46,
+            height=48,
             corner_radius=8,
             fg_color="#2563EB",
             hover_color="#1D4ED8",
@@ -412,7 +420,7 @@ class NetzyApp(ctk.CTk):
             font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             command=self.start_process,
         )
-        self.start_btn.pack(fill="x", pady=(0, 8))
+        self.start_btn.pack(fill="x", pady=(0, 10))
 
         # Progress bar ve durum yazısı
         self.progress_meta = ctk.CTkFrame(self.action_panel, fg_color="transparent")
@@ -438,8 +446,8 @@ class NetzyApp(ctk.CTk):
 
         self.progress_bar = ctk.CTkProgressBar(
             self.action_panel,
-            height=7,
-            corner_radius=3,
+            height=8,
+            corner_radius=4,
             fg_color="#142136",
             progress_color="#38BDF8",
         )
@@ -447,109 +455,70 @@ class NetzyApp(ctk.CTk):
         self.progress_bar.set(0.0)
 
         # ==========================================
-        # 4. REFERANS GÖRSEL BİREBİR KART LİSTESİ
+        # 4. YUVARLAKLAR / DAİRESEL DÜĞÜMLER PANELİ
+        # Liste yerine tek bakışta görünen 3x3 dairesel ızgara
         # ==========================================
-        self.scroll_frame = ctk.CTkScrollableFrame(
+        self.circles_card = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
-            fg_color="#090E1B",
-            border_width=1,
-            border_color="#162238",
-        )
-        self.scroll_frame.pack(fill="both", expand=True)
-
-        for item in ACTIONS:
-            self._create_reference_card(item)
-
-    def _create_reference_card(self, item: dict):
-        """Referans görseldeki kart tasarımını birebir üretir (Seçimsiz, salt gösterim)."""
-        card = ctk.CTkFrame(
-            self.scroll_frame,
-            corner_radius=6,
+            corner_radius=12,
             fg_color="#142136",
             border_width=1,
             border_color="#1E2C44",
-            height=66,
         )
-        card.pack(fill="x", padx=6, pady=4)
-        card.pack_propagate(False)
+        self.circles_card.pack(fill="both", expand=True)
 
-        inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=12, pady=8)
+        for i, op in enumerate(OPERATIONS):
+            r = i // 3
+            c = i % 3
 
-        # Sol: Görseldeki yuvarlatılmış kare kutucuk (Seçim değil, durum göstergesi)
-        icon_box = ctk.CTkFrame(
-            inner,
-            width=24,
-            height=24,
-            corner_radius=4,
-            fg_color="#1B283E",
-            border_width=1,
-            border_color="#2D405C",
-        )
-        icon_box.pack(side="left", padx=(0, 12))
-        icon_box.pack_propagate(False)
+            cell = ctk.CTkFrame(self.circles_card, fg_color="transparent")
+            cell.grid(row=r, column=c, padx=12, pady=12, sticky="nsew")
+            self.circles_card.grid_columnconfigure(c, weight=1)
+            self.circles_card.grid_rowconfigure(r, weight=1)
 
-        icon_lbl = ctk.CTkLabel(
-            icon_box,
-            text="",
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
-            text_color="#64748B",
-        )
-        icon_lbl.pack(expand=True)
+            # Kusursuz Daire (Yuvarlak)
+            circle = ctk.CTkFrame(
+                cell,
+                width=58,
+                height=58,
+                corner_radius=29,
+                fg_color="#1A283E",
+                border_width=2,
+                border_color="#2D405C",
+            )
+            circle.pack(pady=(0, 6))
+            circle.pack_propagate(False)
 
-        # Orta: Başlık ve Açıklama Metni
-        text_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        text_frame.pack(side="left", fill="both", expand=True)
+            icon_lbl = ctk.CTkLabel(
+                circle,
+                text=op["icon"],
+                font=ctk.CTkFont(family="Segoe UI", size=20),
+            )
+            icon_lbl.pack(expand=True)
 
-        title_lbl = ctk.CTkLabel(
-            text_frame,
-            text=item["title"],
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
-            text_color="#F1F5F9",
-            anchor="w",
-        )
-        title_lbl.pack(anchor="w", pady=(1, 0))
+            name_lbl = ctk.CTkLabel(
+                cell,
+                text=op["name"],
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                text_color="#F1F5F9",
+            )
+            name_lbl.pack()
 
-        desc_lbl = ctk.CTkLabel(
-            text_frame,
-            text=item["desc"],
-            font=ctk.CTkFont(family="Segoe UI", size=11),
-            text_color="#8295AD",
-            anchor="w",
-        )
-        desc_lbl.pack(anchor="w")
+            state_lbl = ctk.CTkLabel(
+                cell,
+                text="Bekliyor",
+                font=ctk.CTkFont(family="Segoe UI", size=10),
+                text_color="#64748B",
+            )
+            state_lbl.pack()
 
-        # Sağ: Görseldeki Turuncu Admin Rozeti
-        badge_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        badge_frame.pack(side="right")
-
-        admin_badge = ctk.CTkFrame(
-            badge_frame,
-            corner_radius=5,
-            fg_color="#7A2D0E",
-            border_width=1,
-            border_color="#B45309",
-            height=24,
-            width=68,
-        )
-        admin_badge.pack(side="right")
-        admin_badge.pack_propagate(False)
-
-        admin_badge_lbl = ctk.CTkLabel(
-            admin_badge,
-            text="🔑 Admin",
-            font=ctk.CTkFont(family="Segoe UI", size=10, weight="bold"),
-            text_color="#FDBA74",
-        )
-        admin_badge_lbl.pack(expand=True)
-
-        self.card_widgets.append({
-            "item": item,
-            "card": card,
-            "icon_box": icon_box,
-            "icon_lbl": icon_lbl,
-        })
+            self.circle_widgets.append({
+                "op": op,
+                "circle": circle,
+                "icon_lbl": icon_lbl,
+                "name_lbl": name_lbl,
+                "state_lbl": state_lbl,
+            })
 
     def _start_network_monitor(self):
         def loop():
@@ -612,7 +581,7 @@ class NetzyApp(ctk.CTk):
         self.update_banner.pack(fill="x", pady=(0, 8), before=self.action_panel)
 
     def start_process(self):
-        """Tüm işlemleri sırayla çalıştırır."""
+        """Tüm dairesel adımları sırayla çalıştırır."""
         if self.is_running:
             return
 
@@ -632,37 +601,37 @@ class NetzyApp(ctk.CTk):
         self.start_btn.configure(state="disabled", text="⏳ İŞLEMLER YÜRÜTÜLÜYOR...", fg_color="#334155")
         self.progress_bar.set(0.0)
 
-        # Kart durumlarını sıfırla
-        for w in self.card_widgets:
-            w["card"].configure(border_color="#1E2C44")
-            w["icon_box"].configure(fg_color="#1B283E", border_color="#2D405C")
-            w["icon_lbl"].configure(text="")
+        # Tüm yuvarlakları varsayılan duruma sıfırla
+        for w in self.circle_widgets:
+            w["circle"].configure(fg_color="#1A283E", border_color="#2D405C")
+            w["icon_lbl"].configure(text=w["op"]["icon"])
+            w["state_lbl"].configure(text="Bekliyor", text_color="#64748B")
 
         threading.Thread(target=self._run_worker, daemon=True).start()
 
     def _run_worker(self):
-        total = len(self.card_widgets)
+        total = len(self.circle_widgets)
         success_count = 0
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
-        for i, w in enumerate(self.card_widgets):
-            item = w["item"]
+        for i, w in enumerate(self.circle_widgets):
+            op = w["op"]
             pct_before = i / total
 
-            # UI: Çalışıyor
-            self.after(0, self._update_card_ui, w, "running", pct_before, f"[{i + 1}/{total}] {item['title']} çalıştırılıyor...")
+            # UI: Daire aktif (çalışıyor)
+            self.after(0, self._update_circle_ui, w, "running", pct_before, f"[{i + 1}/{total}] {op['desc']}")
 
             is_ok = True
             extra_msg = ""
 
             try:
-                if item["type"] == "cmd":
-                    proc = subprocess.run(item["cmd"], shell=True, capture_output=True, creationflags=creation_flags)
+                if op["type"] == "cmd":
+                    proc = subprocess.run(op["cmd"], shell=True, capture_output=True, creationflags=creation_flags)
                     stdout = proc.stdout.decode(OEM_CODEPAGE, errors="replace").strip()
                     stderr = proc.stderr.decode(OEM_CODEPAGE, errors="replace").strip()
                     combined = (stdout + "\n" + stderr).lower()
 
-                    if "netsh int ip reset" in item["cmd"]:
+                    if "netsh int ip reset" in op["cmd"]:
                         if "requires elevation" in combined or "yükseltme gerekiyor" in combined:
                             is_ok = False
                         elif "restart the computer" in combined or "yeniden başlat" in combined or "ok!" in combined:
@@ -672,15 +641,15 @@ class NetzyApp(ctk.CTk):
                     else:
                         is_ok = (proc.returncode == 0 or "ok!" in combined or "successfully" in combined or "başarıyla" in combined)
 
-                    for extra in item.get("extra_cmds", []):
+                    for extra in op.get("extra_cmds", []):
                         try:
                             subprocess.run(extra, shell=True, capture_output=True, creationflags=creation_flags)
                         except Exception:
                             pass
 
-                elif item["type"] == "python" and item.get("handler") == "clean_temp_files":
+                elif op["type"] == "python" and op.get("handler") == "clean_temp_files":
                     count, mb = clean_temp_files()
-                    extra_msg = f"{mb:.1f} MB temizlendi"
+                    extra_msg = f"{mb:.1f} MB"
                     is_ok = True
 
             except Exception:
@@ -690,36 +659,36 @@ class NetzyApp(ctk.CTk):
                 success_count += 1
 
             pct_after = (i + 1) / total
-            status_desc = extra_msg if extra_msg else ("Tamamlandı" if is_ok else "Hata")
-            self.after(0, self._update_card_ui, w, "done" if is_ok else "error", pct_after, f"[{i + 1}/{total}] {item['title']} {status_desc}")
+            status_text = extra_msg if extra_msg else ("Tamamlandı" if is_ok else "Hata")
+            self.after(0, self._update_circle_ui, w, "done" if is_ok else "error", pct_after, f"[{i + 1}/{total}] {op['name']} tamamlandı.")
 
             time.sleep(0.35)
 
         self.after(0, self._on_all_finished, success_count, total)
 
-    def _update_card_ui(self, w, state: str, progress_val: float, status_text: str):
+    def _update_circle_ui(self, w, state: str, progress_val: float, status_msg: str):
         if not self.winfo_exists():
             return
         self.progress_bar.set(progress_val)
         self.percent_lbl.configure(text=f"%{int(progress_val * 100)}")
-        self.status_lbl.configure(text=status_text)
+        self.status_lbl.configure(text=status_msg)
 
-        card = w["card"]
-        box = w["icon_box"]
-        lbl = w["icon_lbl"]
+        circle = w["circle"]
+        icon_lbl = w["icon_lbl"]
+        state_lbl = w["state_lbl"]
 
         if state == "running":
-            card.configure(border_color="#3B82F6")
-            box.configure(fg_color="#1E3A8A", border_color="#3B82F6")
-            lbl.configure(text="●", text_color="#60A5FA")
+            circle.configure(fg_color="#1E3A8A", border_color="#3B82F6")
+            icon_lbl.configure(text="●")
+            state_lbl.configure(text="Çalışıyor...", text_color="#60A5FA")
         elif state == "done":
-            card.configure(border_color="#059669")
-            box.configure(fg_color="#064E3B", border_color="#059669")
-            lbl.configure(text="✓", text_color="#34D399")
+            circle.configure(fg_color="#064E3B", border_color="#059669")
+            icon_lbl.configure(text="✓")
+            state_lbl.configure(text="Tamamlandı", text_color="#34D399")
         elif state == "error":
-            card.configure(border_color="#DC2626")
-            box.configure(fg_color="#450A0A", border_color="#DC2626")
-            lbl.configure(text="✕", text_color="#F87171")
+            circle.configure(fg_color="#450A0A", border_color="#DC2626")
+            icon_lbl.configure(text="✕")
+            state_lbl.configure(text="Hata", text_color="#F87171")
 
     def _on_all_finished(self, success_count: int, total: int):
         if not self.winfo_exists():
@@ -728,13 +697,13 @@ class NetzyApp(ctk.CTk):
         self.is_running = False
         self.progress_bar.set(1.0)
         self.percent_lbl.configure(text="%100")
-        self.status_lbl.configure(text=f"✅ Tüm işlemler tamamlandı! ({success_count}/{total} başarılı)")
+        self.status_lbl.configure(text=f"✅ Tüm adımlar tamamlandı! ({success_count}/{total} başarılı)")
         self.start_btn.configure(state="normal", text="⚡ BAŞLAT", fg_color="#2563EB")
 
         messagebox.showinfo(
             "İşlemler Tamamlandı",
-            f"Tüm işlemler başarıyla yürütüldü ({success_count}/{total} başarılı).\n\n"
-            "Ağ protokollerinin ve ayarların eksiksiz devreye girmesi için bilgisayarınızı yeniden başlatmanız önerilir.",
+            f"Tüm ağ ve sistem onarım adımları yürütüldü ({success_count}/{total} başarılı).\n\n"
+            "Ayarların tam olarak devreye girmesi için bilgisayarınızı yeniden başlatmanız önerilir.",
         )
 
     def destroy(self):
