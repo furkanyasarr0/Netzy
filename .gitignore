@@ -1,11 +1,33 @@
+# PyInstaller derleme çıktıları
+build/
+dist/
+*.spec
+*.manifest
+
+# Byte-compiled / Python önbellek dosyaları
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.pyd
-.Python
+
+# Sanal ortamlar (Virtual Environments)
 env/
 venv/
-*.log
+.venv/
+ENV/
+
+# Yerel yapılandırma ve geçici loglar
 config.json
+*.log
+
+# IDE ve Editör ayarları
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# İşletim sistemi kalıntıları
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

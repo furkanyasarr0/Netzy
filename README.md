@@ -15,6 +15,7 @@ Netzy, ana sayfasında kalabalık listeler veya karmaşık menüler barındırma
 - **İşlemler Butonu (`📋 İşlemler`):** Yürütülecek 9 temel sistem ve ağ işlemini kategorize edilmiş halde ayrı bir pencerede listeler.
 - **Canlı Ağ Takibi:** Gecikme süresini (ping ms) ve internet durumunu arka planda donma yapmadan gösterir.
 - **Modern "N" Logosu:** Sade, teknolojik ve şık Windows arayüz simgesi.
+- **Tek Parça EXE Desteği:** Python veya harici kütüphane kurulumuna gerek duymaksızın doğrudan taşınabilir (portable) olarak çalışır.
 
 ---
 
@@ -46,16 +47,22 @@ Netzy, kullanıcı gizliliğine tam saygı duyar:
 
 ---
 
-## 🚀 Başlatma
+## 🚀 Başlatma ve Derleme
 
-1. **Yönetici Olarak Çalıştırma (Önerilen):**
-   `Netzy.bat` dosyasına çift tıklayarak doğrudan yönetici yetkisiyle açabilirsiniz.
+1. **Doğrudan Taşınabilir EXE Olarak (Önerilen):**
+   `dist\Netzy.exe` dosyasını doğrudan çalıştırabilirsiniz (Python kurulumu gerektirmez, UAC yönetici izni gömülüdür).
 
-2. **Komut Satırından:**
+2. **BAT Dosyası ile:**
+   `Netzy.bat` dosyasına çift tıklayarak çalıştırabilirsiniz.
+
+3. **Kaynak Koddan Çalıştırma:**
    ```bash
    pip install -r requirements.txt
    python main.py
    ```
+
+4. **Yeniden EXE Derlemek İçin:**
+   `build.bat` dosyasına çift tıklayarak tek adımda yeni `dist\Netzy.exe` üretebilirsiniz.
 
 ---
 

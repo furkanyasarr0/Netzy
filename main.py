@@ -19,16 +19,23 @@ import customtkinter as ctk
 from PIL import Image
 from tkinter import messagebox
 
-# Çalışma dizinini sabitle
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Çalışma dizinini ve kaynak dizinini dondurulmuş (frozen EXE) ortama göre ayarla
+if getattr(sys, "frozen", False):
+    BASE_DIR = sys._MEIPASS
+    EXE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    EXE_DIR = BASE_DIR
+
+APP_DIR = EXE_DIR
 os.chdir(APP_DIR)
 
 CURRENT_VERSION = "v1.0.0"
 GITHUB_REPO_URL = "https://github.com/furkanyasarr0/Netzy"
 GITHUB_API_URL = "https://api.github.com/repos/furkanyasarr0/Netzy/releases/latest"
-CONFIG_FILE = os.path.join(APP_DIR, "config.json")
-LOGO_PATH = os.path.join(APP_DIR, "logo.png")
-ICO_PATH = os.path.join(APP_DIR, "logo.ico")
+CONFIG_FILE = os.path.join(EXE_DIR, "config.json")
+LOGO_PATH = os.path.join(BASE_DIR, "logo.png")
+ICO_PATH = os.path.join(BASE_DIR, "logo.ico")
 
 # Windows konsol OEM kod sayfası (Türkçe için cp857)
 OEM_CODEPAGE = f"cp{ctypes.windll.kernel32.GetOEMCP()}" if hasattr(ctypes, "windll") else "utf-8"
@@ -143,10 +150,18 @@ def request_admin_elevation():
     """Uygulamayı UAC penceresiyle yönetici olarak yeniden başlatır."""
     if not is_admin():
         try:
-            script_path = os.path.abspath(sys.argv[0] if sys.argv else __file__)
-            work_dir = os.path.dirname(script_path)
+            if getattr(sys, "frozen", False):
+                exe = sys.executable
+                params = ""
+                work_dir = os.path.dirname(exe)
+            else:
+                exe = sys.executable
+                script_path = os.path.abspath(sys.argv[0] if sys.argv else __file__)
+                params = f'"{script_path}"'
+                work_dir = os.path.dirname(script_path)
+
             ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", sys.executable, f'"{script_path}"', work_dir, 1
+                None, "runas", exe, params, work_dir, 1
             )
             sys.exit(0)
         except Exception as e:
