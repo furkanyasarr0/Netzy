@@ -1,8 +1,7 @@
 """
 Netzy - Windows Ağ Sıfırlama ve Sistem Onarım Aracı
 Ana sayfada sadece Başlat butonu ve ilerleme çubuğu yer alır.
-İşlemler ayrı bir butonla açılan sade kategori görünümündedir.
-Yeni "N" logolu, sıfır veri toplamalı ve açık kaynak lisanslıdır.
+Pencereler ve pop-up'lar ekranın tam ortasında açılır ve logo içerir.
 """
 
 import os
@@ -17,7 +16,6 @@ import subprocess
 import urllib.request
 import customtkinter as ctk
 from PIL import Image
-from tkinter import messagebox
 
 # Çalışma dizinini ve kaynak dizinini dondurulmuş (frozen EXE) ortama göre ayarla
 if getattr(sys, "frozen", False):
@@ -138,6 +136,31 @@ CATEGORIZED_OPERATIONS = [
 FLAT_OPERATIONS = [item for cat in CATEGORIZED_OPERATIONS for item in cat["items"]]
 
 
+def center_window(window, width: int, height: int, parent=None):
+    """Pencereyi ekranın veya ebeveyn pencerenin tam ortasına yerleştirir."""
+    window.update_idletasks()
+    if parent and parent.winfo_exists():
+        parent.update_idletasks()
+        px = parent.winfo_x()
+        py = parent.winfo_y()
+        pw = parent.winfo_width()
+        ph = parent.winfo_height()
+        if pw <= 1 or ph <= 1:
+            sw = window.winfo_screenwidth()
+            sh = window.winfo_screenheight()
+            x = (sw - width) // 2
+            y = (sh - height) // 2
+        else:
+            x = px + (pw - width) // 2
+            y = py + (ph - height) // 2
+    else:
+        sw = window.winfo_screenwidth()
+        sh = window.winfo_screenheight()
+        x = (sw - width) // 2
+        y = (sh - height) // 2
+    window.geometry(f"{width}x{height}+{max(0, x)}+{max(0, y)}")
+
+
 def is_admin() -> bool:
     """Yönetici haklarını denetler."""
     try:
@@ -165,7 +188,7 @@ def request_admin_elevation():
             )
             sys.exit(0)
         except Exception as e:
-            messagebox.showerror("Hata", f"Yönetici olarak başlatılamadı:\n{e}")
+            NetzyDialog(None, "Hata", f"Yönetici olarak başlatılamadı:\n{e}").show()
 
 
 def load_config() -> dict:
@@ -219,6 +242,125 @@ def clean_temp_files():
     return deleted_files, mb
 
 
+class NetzyDialog(ctk.CTkToplevel):
+    """Logolu, modern koyu temalı ve ekranın ortasında açılan dialog penceresi."""
+
+    def __init__(self, parent, title: str, message: str, is_confirm: bool = False):
+        super().__init__(parent)
+        self.title(title)
+        self.configure(fg_color="#0D1525")
+        self.resizable(False, False)
+        self.result = False
+
+        if os.path.exists(ICO_PATH):
+            try:
+                self.iconbitmap(ICO_PATH)
+            except Exception:
+                pass
+
+        if parent and parent.winfo_exists():
+            self.transient(parent)
+            self.grab_set()
+
+        # Ana Kutu
+        container = ctk.CTkFrame(self, fg_color="#142136", corner_radius=10, border_width=1, border_color="#1E2C44")
+        container.pack(fill="both", expand=True, padx=16, pady=16)
+
+        # Üst Kısım: Logo & Başlık
+        top_frame = ctk.CTkFrame(container, fg_color="transparent")
+        top_frame.pack(fill="x", padx=16, pady=(16, 10))
+
+        if os.path.exists(LOGO_PATH):
+            try:
+                logo_pil = Image.open(LOGO_PATH)
+                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(32, 32))
+                logo_lbl = ctk.CTkLabel(top_frame, image=self.logo_img, text="")
+                logo_lbl.pack(side="left", padx=(0, 10))
+            except Exception:
+                pass
+
+        title_lbl = ctk.CTkLabel(
+            top_frame,
+            text=title,
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text_color="#F8FAFC",
+        )
+        title_lbl.pack(side="left")
+
+        # Mesaj Metni
+        msg_lbl = ctk.CTkLabel(
+            container,
+            text=message,
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color="#CBD5E1",
+            justify="left",
+            wraplength=420,
+        )
+        msg_lbl.pack(fill="x", padx=18, pady=(0, 18))
+
+        # Butonlar
+        btn_frame = ctk.CTkFrame(container, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=16, pady=(0, 16))
+
+        if is_confirm:
+            no_btn = ctk.CTkButton(
+                btn_frame,
+                text="Hayır",
+                width=100,
+                height=34,
+                corner_radius=6,
+                fg_color="#1E293B",
+                hover_color="#334155",
+                text_color="#CBD5E1",
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                command=self._cancel,
+            )
+            no_btn.pack(side="right", padx=(8, 0))
+
+            yes_btn = ctk.CTkButton(
+                btn_frame,
+                text="Evet",
+                width=100,
+                height=34,
+                corner_radius=6,
+                fg_color="#2563EB",
+                hover_color="#1D4ED8",
+                text_color="#FFFFFF",
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                command=self._confirm,
+            )
+            yes_btn.pack(side="right")
+        else:
+            ok_btn = ctk.CTkButton(
+                btn_frame,
+                text="Tamam",
+                height=34,
+                corner_radius=6,
+                fg_color="#2563EB",
+                hover_color="#1D4ED8",
+                text_color="#FFFFFF",
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                command=self._confirm,
+            )
+            ok_btn.pack(fill="x")
+
+        # Ekranın tam ortasında aç
+        h = 250 if is_confirm else 220
+        center_window(self, 480, h, parent)
+
+    def _confirm(self):
+        self.result = True
+        self.destroy()
+
+    def _cancel(self):
+        self.result = False
+        self.destroy()
+
+    def show(self) -> bool:
+        self.wait_window()
+        return self.result
+
+
 class PrivacyTermsModal(ctk.CTkToplevel):
     """Kullanım Koşulları ve Gizlilik Politikası Penceresi (Sıfır Veri & Open Source Vurgulu)."""
 
@@ -227,9 +369,14 @@ class PrivacyTermsModal(ctk.CTkToplevel):
         self.on_accept = on_accept
         self.is_first_run = is_first_run
         self.title("Netzy — Gizlilik Politikası ve Kullanım Koşulları")
-        self.geometry("580x520")
         self.minsize(540, 480)
         self.configure(fg_color="#0D1525")
+
+        if os.path.exists(ICO_PATH):
+            try:
+                self.iconbitmap(ICO_PATH)
+            except Exception:
+                pass
 
         self.transient(parent)
         self.grab_set()
@@ -241,7 +388,7 @@ class PrivacyTermsModal(ctk.CTkToplevel):
         if os.path.exists(LOGO_PATH):
             try:
                 logo_pil = Image.open(LOGO_PATH)
-                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(40, 40))
+                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(38, 38))
                 self.logo_lbl = ctk.CTkLabel(self.header_frame, image=self.logo_img, text="")
                 self.logo_lbl.pack(side="left", padx=(0, 12))
             except Exception:
@@ -251,7 +398,7 @@ class PrivacyTermsModal(ctk.CTkToplevel):
         self.title_lbl = ctk.CTkLabel(
             self.header_frame,
             text=title_text,
-            font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=19, weight="bold"),
             text_color="#F8FAFC",
         )
         self.title_lbl.pack(side="left")
@@ -302,7 +449,7 @@ class PrivacyTermsModal(ctk.CTkToplevel):
             self.btn_frame,
             text=btn_text,
             font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-            height=44,
+            height=42,
             corner_radius=8,
             fg_color="#2563EB",
             hover_color="#1D4ED8",
@@ -310,6 +457,8 @@ class PrivacyTermsModal(ctk.CTkToplevel):
             command=self._on_click,
         )
         self.action_btn.pack(fill="x")
+
+        center_window(self, 580, 520, parent)
 
     def _on_click(self):
         if self.is_first_run and self.on_accept:
@@ -323,15 +472,29 @@ class OperationsWindow(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("Netzy — İşlem Listesi (Kategoriler)")
-        self.geometry("560x540")
         self.minsize(520, 480)
         self.configure(fg_color="#0D1525")
 
+        if os.path.exists(ICO_PATH):
+            try:
+                self.iconbitmap(ICO_PATH)
+            except Exception:
+                pass
+
         self.transient(parent)
 
-        # Header
+        # Header - Logolu ve Ortalanmış
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=20, pady=(18, 10))
+
+        if os.path.exists(LOGO_PATH):
+            try:
+                logo_pil = Image.open(LOGO_PATH)
+                self.logo_img = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(32, 32))
+                logo_lbl = ctk.CTkLabel(header, image=self.logo_img, text="")
+                logo_lbl.pack(side="left", padx=(0, 10))
+            except Exception:
+                pass
 
         title = ctk.CTkLabel(
             header,
@@ -360,7 +523,6 @@ class OperationsWindow(ctk.CTkToplevel):
         scroll.pack(fill="both", expand=True, padx=20, pady=(0, 16))
 
         for cat in CATEGORIZED_OPERATIONS:
-            # Kategori Başlığı
             cat_header = ctk.CTkFrame(scroll, fg_color="transparent")
             cat_header.pack(fill="x", padx=4, pady=(12, 6))
 
@@ -372,7 +534,6 @@ class OperationsWindow(ctk.CTkToplevel):
             )
             cat_title.pack(side="left")
 
-            # Kategori Kartları
             for item in cat["items"]:
                 row = ctk.CTkFrame(
                     scroll,
@@ -432,6 +593,8 @@ class OperationsWindow(ctk.CTkToplevel):
         )
         close_btn.pack(fill="x", padx=20, pady=(0, 16))
 
+        center_window(self, 560, 540, parent)
+
 
 class NetzyApp(ctk.CTk):
     def __init__(self):
@@ -443,8 +606,7 @@ class NetzyApp(ctk.CTk):
 
         # Sade başlık: Netzy
         self.title("Netzy")
-        self.geometry("540x380")
-        self.minsize(500, 340)
+        self.minsize(500, 320)
         self.configure(fg_color="#0D1525")
 
         # Uygulama Simgesi (logo.ico)
@@ -458,6 +620,9 @@ class NetzyApp(ctk.CTk):
         self._stop_net_thread = False
 
         self._build_ui()
+        # Ekranın tam ortasında başlat
+        center_window(self, 540, 340)
+
         self._start_network_monitor()
         self._check_version_background()
         self._check_first_launch()
@@ -681,21 +846,8 @@ class NetzyApp(ctk.CTk):
             fg_color="#0F172A",
             progress_color="#38BDF8",
         )
-        self.progress_bar.pack(fill="x", padx=10, pady=(0, 16))
+        self.progress_bar.pack(fill="x", padx=10, pady=(0, 12))
         self.progress_bar.set(0.0)
-
-        # Alt Hızlı Kategori Bağlantısı
-        self.view_ops_link = ctk.CTkButton(
-            self.center_inner,
-            text="📋 Yürütülecek 9 İşlemi Kategori Halinde Gör",
-            font=ctk.CTkFont(family="Segoe UI", size=11, underline=True),
-            fg_color="transparent",
-            hover_color="#1A283E",
-            text_color="#38BDF8",
-            height=28,
-            command=self._open_operations_window,
-        )
-        self.view_ops_link.pack()
 
     def _open_operations_window(self):
         OperationsWindow(self)
@@ -767,12 +919,14 @@ class NetzyApp(ctk.CTk):
 
         # Yönetici Kontrolü
         if not is_admin():
-            ans = messagebox.askyesno(
+            ans = NetzyDialog(
+                self,
                 "Yönetici İzni Zorunludur",
                 "Ağ sıfırlama komutları doğrudan Windows çekirdeğini yapılandırdığı için "
                 "Yönetici yetkisi ZORUNLUDUR.\n\n"
                 "Uygulama şimdi Yönetici olarak yeniden başlatılsın mı?",
-            )
+                is_confirm=True,
+            ).show()
             if ans:
                 request_admin_elevation()
             return
@@ -856,11 +1010,13 @@ class NetzyApp(ctk.CTk):
         self.status_lbl.configure(text=f"✅ Tüm adımlar tamamlandı! ({success_count}/{total} başarılı)")
         self.start_btn.configure(state="normal", text="⚡ BAŞLAT", fg_color="#2563EB")
 
-        messagebox.showinfo(
+        NetzyDialog(
+            self,
             "İşlemler Tamamlandı",
             f"Tüm ağ ve sistem onarım adımları yürütüldü ({success_count}/{total} başarılı).\n\n"
             "Ayarların tam olarak devreye girmesi için bilgisayarınızı yeniden başlatmanız önerilir.",
-        )
+            is_confirm=False,
+        ).show()
 
     def destroy(self):
         self._stop_net_thread = True
