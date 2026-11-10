@@ -1,0 +1,82 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write   # yalnızca etiket (tag) derlemesinde Release oluşturmak için
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      # İmzalama isteğe bağlıdır: bu gizli anahtar tanımlı değilse imzasız derlenir
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: dotnet test Netzy.sln -c Release --nologo
+
+      - name: Build
+        shell: pwsh
+        run: |
+          # Etiket derlemesinde sürüm etiketten gelir (v2.1.0 → 2.1.0); uygulama içindeki güncelleme kontrolü bunu kullanır
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '' }
+          $versionArg = if ($version) { "-p:Version=$version" } else { '' }
+          dotnet build src/Netzy/Netzy.csproj -c Release --nologo $versionArg
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item src/Netzy/bin/Release/net48/Netzy.exe dist/Netzy.exe
+
+      - name: Upload unsigned build
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: Netzy-unsigned
+          path: dist/Netzy.exe
+
+      # Kod imzalama (SmartScreen uyarısını kaldırmanın tek yolu). Kurulum: README → "Kod imzalama"
+      - name: Sign with SignPath
+        if: env.SIGNPATH_API_TOKEN != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Use signed build
+        if: env.SIGNPATH_API_TOKEN != ''
+        shell: pwsh
+        run: Copy-Item signed/Netzy.exe dist/Netzy.exe -Force
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/Netzy.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Netzy.exe" | Out-File -Encoding ascii dist/Netzy.exe.sha256
+          Get-Content dist/Netzy.exe.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Netzy
+          path: dist/
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Netzy.exe
+            dist/Netzy.exe.sha256
+          generate_release_notes: true

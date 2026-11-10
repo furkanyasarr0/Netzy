@@ -1,30 +1,20 @@
-# PyInstaller derleme çıktıları
-build/
+# .NET derleme çıktıları
+bin/
+obj/
 dist/
-*.spec
-*.manifest
+TestResults/
+*.user
+.vs/
 
-# Byte-compiled / Python önbellek dosyaları
+# Eski Python sürümünden kalanlar
 __pycache__/
-*.py[cod]
-*$py.class
-*.pyd
-
-# Sanal ortamlar (Virtual Environments)
-env/
-venv/
-.venv/
-ENV/
-
-# Yerel yapılandırma ve geçici loglar
+build/
+*.spec
 config.json
-*.log
 
-# IDE ve Editör ayarları
+# IDE ve editör ayarları
 .vscode/
 .idea/
-*.swp
-*.swo
 
 # İşletim sistemi kalıntıları
 Thumbs.db

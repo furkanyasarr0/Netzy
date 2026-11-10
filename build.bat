@@ -1,14 +1,24 @@
 @echo off
-title Netzy - Build Standalone EXE
+title Netzy - Build
 cd /d "%~dp0"
 
-echo [Netzy] EXE derleme baslatiliyor...
-python -m PyInstaller --onefile --noconsole --name "Netzy" --icon "logo.ico" --add-data "logo.png;." --add-data "logo.ico;." --add-data "logo.jpg;." --collect-all customtkinter --uac-admin main.py
+echo [Netzy] Testler calistiriliyor...
+dotnet test Netzy.sln -c Release --nologo || goto :fail
+
+echo [Netzy] EXE derleniyor...
+dotnet build src\Netzy\Netzy.csproj -c Release --nologo || goto :fail
+
+if not exist dist mkdir dist
+copy /y src\Netzy\bin\Release\net48\Netzy.exe dist\Netzy.exe >nul || goto :fail
+certutil -hashfile dist\Netzy.exe SHA256 | findstr /v ":" > dist\Netzy.exe.sha256
 
 echo.
-if %errorlevel% equ 0 (
-    echo [BASARILI] Derleme tamamlandi: dist\Netzy.exe
-) else (
-    echo [HATA] Derleme sirasinda bir hata olustu.
-)
+echo [BASARILI] dist\Netzy.exe hazir.
 pause
+exit /b 0
+
+:fail
+echo.
+echo [HATA] Testler veya derleme basarisiz oldu.
+pause
+exit /b 1

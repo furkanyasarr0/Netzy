@@ -1,0 +1,161 @@
+<Window x:Class="Netzy.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Netzy" Width="700" SizeToContent="Height" ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+  <Window.Resources>
+    <Style x:Key="Dot" TargetType="TextBlock">
+      <Setter Property="Text" Value="●"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource IdleBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,0,7,0"/>
+    </Style>
+    <Style x:Key="CheckLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,0,8,0"/>
+    </Style>
+    <Style x:Key="CheckValue" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+      <Setter Property="Text" Value="—"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid Margin="22,16,22,18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="0"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Üst bar -->
+    <DockPanel Grid.Row="0" Margin="0,0,0,14" LastChildFill="False">
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+        <Image x:Name="LogoImage" Width="32" Height="32" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+        <TextBlock Text="Netzy" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+        <TextBlock x:Name="VersionText" FontSize="11" Foreground="{StaticResource FaintBrush}" VerticalAlignment="Center" Margin="8,4,0,0"/>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                CornerRadius="6" Height="30" Padding="9,0" Margin="0,0,6,0">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock x:Name="NetDot" Style="{StaticResource Dot}" Foreground="{StaticResource AmberBrush}" Margin="0,0,5,0"/>
+            <TextBlock x:Name="NetText" Text="{DynamicResource S.net.checking}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Border>
+        <Button Content="{DynamicResource S.btn.operations}" Style="{StaticResource HeaderButton}" Click="Operations_Click"/>
+        <Button x:Name="ReportButton" Content="{DynamicResource S.btn.report}" Style="{StaticResource HeaderButton}" Click="Report_Click"/>
+        <Button Content="{DynamicResource S.btn.privacy}" Style="{StaticResource HeaderButton}" Click="Privacy_Click"/>
+        <Button Content="GitHub" Style="{StaticResource HeaderButton}" Click="GitHub_Click"/>
+        <Button x:Name="LangButton" Style="{StaticResource HeaderButton}" Margin="0" Click="Lang_Click" ToolTip="Türkçe / English"/>
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Güncelleme duyurusu -->
+    <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed" Background="#064E3B" CornerRadius="8" Padding="12,6" Margin="0,0,0,12">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="{DynamicResource S.btn.download}" Style="{StaticResource GreenButton}" Click="Download_Click"/>
+        <TextBlock x:Name="UpdateText" Foreground="#34D399" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+      </DockPanel>
+    </Border>
+
+    <!-- Teşhis -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,12">
+      <StackPanel>
+        <DockPanel Margin="0,0,0,10">
+          <Button x:Name="DiagButton" DockPanel.Dock="Right" Content="{DynamicResource S.btn.rediagnose}" Style="{StaticResource HeaderButton}" Margin="0" Click="Diagnose_Click"/>
+          <TextBlock Text="{DynamicResource S.diag.title}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="26"/>
+            <RowDefinition Height="26"/>
+          </Grid.RowDefinitions>
+          <DockPanel Grid.Row="0" Grid.Column="0">
+            <TextBlock x:Name="DotAdapter" Style="{StaticResource Dot}"/>
+            <TextBlock Text="{DynamicResource S.diag.adapter}" Style="{StaticResource CheckLabel}"/>
+            <TextBlock x:Name="ValAdapter" Style="{StaticResource CheckValue}"/>
+          </DockPanel>
+          <DockPanel Grid.Row="0" Grid.Column="2">
+            <TextBlock x:Name="DotGateway" Style="{StaticResource Dot}"/>
+            <TextBlock Text="{DynamicResource S.diag.gateway}" Style="{StaticResource CheckLabel}"/>
+            <TextBlock x:Name="ValGateway" Style="{StaticResource CheckValue}"/>
+          </DockPanel>
+          <DockPanel Grid.Row="1" Grid.Column="0">
+            <TextBlock x:Name="DotDns" Style="{StaticResource Dot}"/>
+            <TextBlock Text="{DynamicResource S.diag.dns}" Style="{StaticResource CheckLabel}"/>
+            <TextBlock x:Name="ValDns" Style="{StaticResource CheckValue}"/>
+          </DockPanel>
+          <DockPanel Grid.Row="1" Grid.Column="2">
+            <TextBlock x:Name="DotInternet" Style="{StaticResource Dot}"/>
+            <TextBlock Text="{DynamicResource S.diag.internet}" Style="{StaticResource CheckLabel}"/>
+            <TextBlock x:Name="ValInternet" Style="{StaticResource CheckValue}"/>
+          </DockPanel>
+        </Grid>
+        <Border Background="{StaticResource InsetBrush}" CornerRadius="8" Padding="12,9" Margin="0,10,0,0">
+          <TextBlock x:Name="AdviceText" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource AccentBrush}" Text="{DynamicResource S.diag.running}"/>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- Onarım -->
+    <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,0,0,12">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="14"/>
+          <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
+          <Button x:Name="QuickButton" Content="{DynamicResource S.btn.quick}" Style="{StaticResource PrimaryBigButton}" Click="Quick_Click"/>
+          <TextBlock Text="{DynamicResource S.quick.desc}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="2,9,2,0" LineHeight="16"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <Button x:Name="DeepButton" Content="{DynamicResource S.btn.deep}" Style="{StaticResource DeepBigButton}" Click="Deep_Click"/>
+          <TextBlock Text="{DynamicResource S.deep.desc}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="2,9,2,0" LineHeight="16"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- İlerleme ve sonuç -->
+    <StackPanel Grid.Row="5" Margin="2,0,2,12">
+      <DockPanel Margin="0,0,0,6">
+        <TextBlock x:Name="PercentText" DockPanel.Dock="Right" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+        <TextBlock x:Name="StatusText" Text="{DynamicResource S.status.ready}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+      </DockPanel>
+      <ProgressBar x:Name="Progress" Minimum="0" Maximum="1" Value="0"/>
+      <TextBlock x:Name="ResultText" Visibility="Collapsed" Margin="0,9,0,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource GreenBrush}" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <!-- DNS seçimi ve Geri Al -->
+    <Border Grid.Row="6" Style="{StaticResource Card}" Padding="14,10">
+      <DockPanel>
+        <Button x:Name="UndoButton" DockPanel.Dock="Right" Content="{DynamicResource S.btn.undo}" Style="{StaticResource HeaderButton}" Margin="0" Click="Undo_Click"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="DNS" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="2,0,12,0"/>
+          <Button x:Name="DnsAuto" Content="{DynamicResource S.dns.auto}" Style="{StaticResource SegmentButton}" Click="Dns_Click"/>
+          <Button x:Name="DnsCloudflare" Content="Cloudflare" Style="{StaticResource SegmentButton}" Click="Dns_Click"/>
+          <Button x:Name="DnsGoogle" Content="Google" Style="{StaticResource SegmentButton}" Click="Dns_Click"/>
+          <Button x:Name="DnsQuad9" Content="Quad9" Style="{StaticResource SegmentButton}" Click="Dns_Click"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>
