@@ -68,9 +68,9 @@ Netzy is built to avoid antivirus false positives:
 - **Native .NET app:** No packer that unpacks itself into `%TEMP%` (like Python/PyInstaller). Just one small (~200 KB) EXE.
 - **No shell:** `cmd.exe` and PowerShell are never called. Only Windows' own signed tools (`netsh`, `ipconfig`, `nbtstat`) run, by their **full path** in `System32`. Diagnosis uses Windows APIs.
 - **No download-and-run:** The app never downloads code or installs updates by itself; it only opens the Releases page.
-- **Version info and reproducible builds:** The EXE carries publisher and version info. Every release is built on GitHub Actions and published with a `Netzy.exe.sha256` checksum.
+- **Version info and checksum:** The EXE carries publisher and version info, and each release comes with a `Netzy.exe.sha256` checksum.
 
-**About SmartScreen:** Windows SmartScreen shows "Windows protected your PC" for any new, unsigned EXE you download, whatever language it is written in. Code signing is the only way to remove this warning (see below). Until the app is signed: click **More info → Run anyway**. To verify the file you downloaded:
+**About SmartScreen:** Windows SmartScreen may show "Windows protected your PC" because the EXE is not code-signed yet. Click **More info → Run anyway**. To verify the file you downloaded:
 
 ```bat
 certutil -hashfile Netzy.exe SHA256
@@ -106,26 +106,8 @@ src/Netzy/            WPF app (.NET Framework 4.8)
   Ui/                 Dialog windows
   MainWindow.xaml     Main window
 tests/Netzy.Tests/    xUnit tests
-.github/workflows/    Build, test, signing and release
+.github/workflows/    Continuous integration
 ```
-
-### Publishing a release
-
-```bat
-git tag v2.0.0
-git push origin v2.0.0
-```
-
-GitHub Actions runs the tests, builds with the version taken from the tag, signs the EXE (if configured) and uploads `Netzy.exe` and `Netzy.exe.sha256` to the release. The in-app update notice uses the same tag. Tags must start with a lowercase `v`.
-
-### Code signing
-
-The EXE must be signed to remove the SmartScreen warning. A free option for open-source projects is the [SignPath Foundation](https://signpath.org) (application required). Once approved, add these to the repository settings and the workflow signs automatically:
-
-- **Secrets:** `SIGNPATH_API_TOKEN`
-- **Variables:** `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG`
-
-Paid alternative: Azure Artifact Signing (formerly Trusted Signing). Signed EXEs also build SmartScreen reputation through downloads, so the warning may still appear during the first days.
 
 ## 📄 License
 
