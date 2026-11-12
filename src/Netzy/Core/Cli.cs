@@ -1,5 +1,5 @@
 using System;
-using System.IO;
+using System.Linq;
 
 namespace Netzy.Core
 {
@@ -74,10 +74,8 @@ namespace Netzy.Core
                 case CliKind.Diagnose:
                 {
                     var r = Diagnostics.Run();
-                    o.WriteLine($"{Loc.T("diag.adapter")}: {(r.AdapterUp ? r.AdapterName : "-")}");
-                    o.WriteLine($"{Loc.T("diag.gateway")}: {(r.GatewayOk ? r.Gateway + " (" + Format.Ms(r.GatewayMs) + ")" : "-")}");
-                    o.WriteLine($"{Loc.T("diag.dns")}: {(r.DnsOk ? Format.Ms(r.DnsMs) : "-")}");
-                    o.WriteLine($"{Loc.T("diag.internet")}: {(r.HttpOk ? Format.Ms(r.InternetMs) : "-")}");
+                    Diagnostics.RecordIfProblem(r);
+                    o.WriteLine(Diagnostics.Describe(r));
                     var advice = Diagnostics.Recommend(r);
                     o.WriteLine();
                     o.WriteLine(Loc.T("advice." + advice.ToString().ToLowerInvariant()));
@@ -94,14 +92,16 @@ namespace Netzy.Core
                     o.WriteLine();
                     o.WriteLine(Loc.T("result.summary", s.OkCount, s.Results.Count));
                     o.WriteLine(Format.Metrics(s.Before, s.After));
-                    if (s.LogPath != null) o.WriteLine(Loc.T("cli.log", s.LogPath));
-                    return s.AllOk ? 0 : 1;
+                    if (c.Kind == CliKind.Deep) o.WriteLine(Loc.T("done.deepnote"));
+                    if (!s.InternetBack) o.WriteLine(Loc.T("done.nointernet"));
+                    if (s.HistoryId != null) o.WriteLine(Loc.T("cli.history", s.HistoryId));
+                    return s.AllOk && s.InternetBack ? 0 : 1;
                 }
                 case CliKind.Dns:
                 {
-                    var (ok, logPath) = DnsSwitcher.Apply(c.DnsChoice);
+                    var (ok, id) = DnsSwitcher.Apply(c.DnsChoice);
                     o.WriteLine(ok ? Loc.T("dns.done") : Loc.T("dns.failed"));
-                    if (logPath != null) o.WriteLine(Loc.T("cli.log", logPath));
+                    if (id != null) o.WriteLine(Loc.T("cli.history", id));
                     return ok ? 0 : 1;
                 }
                 case CliKind.Undo:
@@ -111,17 +111,10 @@ namespace Netzy.Core
                         o.WriteLine(Loc.T("undo.none"));
                         return 1;
                     }
-                    var log = new RunLog("Undo");
-                    var results = Backup.Restore(log);
-                    bool all = true;
+                    var results = Backup.Restore();
                     foreach (var (kind, ok) in results)
-                    {
                         o.WriteLine($"{Backup.KindName(kind)}: {(ok ? "OK" : Loc.T("status.error"))}");
-                        all &= ok;
-                    }
-                    var path = log.Save();
-                    if (path != null) o.WriteLine(Loc.T("cli.log", path));
-                    return all ? 0 : 1;
+                    return results.All(r => r.Ok) ? 0 : 1;
                 }
             }
             return 2;

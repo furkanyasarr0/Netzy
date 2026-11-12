@@ -56,7 +56,7 @@
           </StackPanel>
         </Border>
         <Button Content="{DynamicResource S.btn.operations}" Style="{StaticResource HeaderButton}" Click="Operations_Click"/>
-        <Button x:Name="ReportButton" Content="{DynamicResource S.btn.report}" Style="{StaticResource HeaderButton}" Click="Report_Click"/>
+        <Button Content="{DynamicResource S.btn.history}" Style="{StaticResource HeaderButton}" Click="History_Click"/>
         <Button Content="{DynamicResource S.btn.privacy}" Style="{StaticResource HeaderButton}" Click="Privacy_Click"/>
         <Button Content="GitHub" Style="{StaticResource HeaderButton}" Click="GitHub_Click"/>
         <Button x:Name="LangButton" Style="{StaticResource HeaderButton}" Margin="0" Click="Lang_Click" ToolTip="Türkçe / English"/>

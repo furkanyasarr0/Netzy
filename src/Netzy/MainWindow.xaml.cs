@@ -19,11 +19,6 @@ namespace Netzy
         const string RepoUrl = "https://github.com/furkanyasarr0/Netzy";
         const string ReleaseApi = "https://api.github.com/repos/furkanyasarr0/Netzy/releases/latest";
 
-        static readonly Dictionary<string, string> DnsNames = new Dictionary<string, string>
-        {
-            ["cloudflare"] = "Cloudflare", ["google"] = "Google", ["quad9"] = "Quad9",
-        };
-
         readonly CancellationTokenSource _closing = new CancellationTokenSource();
         readonly Dictionary<Button, string> _dnsButtons;
         DiagnosisResult _diag;
@@ -131,7 +126,12 @@ namespace Netzy
             AdviceText.Text = Loc.T("diag.running");
             AdviceText.Foreground = Dialogs.Res("MutedBrush");
             foreach (var dot in new[] { DotAdapter, DotGateway, DotDns, DotInternet }) dot.Foreground = Dialogs.Res("IdleBrush");
-            _diag = await Task.Run(() => Diagnostics.Run());
+            _diag = await Task.Run(() =>
+            {
+                var r = Diagnostics.Run();
+                Diagnostics.RecordIfProblem(r);
+                return r;
+            });
             RenderDiagnosis();
             DiagButton.IsEnabled = !_busy;
         }
@@ -180,11 +180,15 @@ namespace Netzy
             ResultText.Visibility = Visibility.Collapsed;
             SetProgress(0);
 
-            var summary = await Task.Run(() => Repairs.Run(deep, (i, total, key, result) =>
-                Dispatcher.BeginInvoke(new Action(() => OnStep(i, total, key, result)))));
+            RunSummary summary;
+            try
+            {
+                summary = await Task.Run(() => Repairs.Run(deep, (i, total, key, result) =>
+                    Dispatcher.BeginInvoke(new Action(() => OnStep(i, total, key, result)))));
+            }
+            finally { SetBusy(false); }   // beklenmeyen bir hatada butonlar kilitli kalmasın
 
             _lastRun = summary;
-            SetBusy(false);
             SetProgress(1);
             RenderRunResult();
             RefreshUndo();
@@ -192,6 +196,7 @@ namespace Netzy
 
             var body = Loc.T("result.summary", summary.OkCount, summary.Results.Count) + "\n" + Format.Metrics(summary.Before, summary.After);
             if (deep) body += "\n\n" + Loc.T("done.deepnote");
+            if (!summary.InternetBack) body += "\n\n" + Loc.T("done.nointernet");
             Dialogs.Message(this, Loc.T("done.title"), body);
             await RunDiagnosis();
         }
@@ -216,8 +221,9 @@ namespace Netzy
             StatusText.Text = Loc.T("status.done", _lastRun.OkCount, _lastRun.Results.Count);
             var failed = _lastRun.Results.Where(r => !r.Result.Ok).Select(r => Loc.T("step." + r.Key)).ToList();
             ResultText.Text = Format.Metrics(_lastRun.Before, _lastRun.After) +
-                              (failed.Count > 0 ? "\n" + Loc.T("status.error") + ": " + string.Join(", ", failed) : "");
-            ResultText.Foreground = Dialogs.Res(failed.Count == 0 ? "GreenBrush" : "AmberBrush");
+                              (failed.Count > 0 ? "\n" + Loc.T("status.error") + ": " + string.Join(", ", failed) : "") +
+                              (_lastRun.InternetBack ? "" : "\n" + Loc.T("done.nointernet"));
+            ResultText.Foreground = Dialogs.Res(failed.Count == 0 && _lastRun.InternetBack ? "GreenBrush" : "AmberBrush");
             ResultText.Visibility = Visibility.Visible;
         }
 
@@ -256,14 +262,14 @@ namespace Netzy
         {
             var choice = _dnsButtons[(Button)sender];
             if (choice == _currentDns) return;
-            var name = choice == "auto" ? Loc.T("dns.auto") : DnsNames[choice];
-            if (!Dialogs.Confirm(this, Loc.T("dns.confirm.title"), Loc.T("dns.confirm.body", name))) return;
+            if (!Dialogs.Confirm(this, Loc.T("dns.confirm.title"), Loc.T("dns.confirm.body", DnsSwitcher.DisplayName(choice)))) return;
             if (!EnsureAdmin()) return;
 
             SetBusy(true);
             StatusText.Text = Loc.T("dns.applying");
-            var (ok, _) = await Task.Run(() => DnsSwitcher.Apply(choice));
-            SetBusy(false);
+            bool ok;
+            try { (ok, _) = await Task.Run(() => DnsSwitcher.Apply(choice)); }
+            finally { SetBusy(false); }
             RefreshDns();
             StatusText.Text = Loc.T(ok ? "dns.done" : "dns.failed");
             await RunDiagnosis();
@@ -279,14 +285,9 @@ namespace Netzy
             if (!EnsureAdmin()) return;
 
             SetBusy(true);
-            var results = await Task.Run(() =>
-            {
-                var log = new RunLog("Undo");
-                var r = Backup.Restore(log);
-                log.Save();
-                return r;
-            });
-            SetBusy(false);
+            List<(string Kind, bool Ok)> results;
+            try { results = await Task.Run(() => Backup.Restore()); }
+            finally { SetBusy(false); }
             RefreshDns();
             bool all = results.All(r => r.Ok);
             var lines = string.Join("\n", results.Select(r => $"• {Backup.KindName(r.Kind)}: {(r.Ok ? Loc.T("status.ok") : Loc.T("status.error"))}"));
@@ -300,7 +301,7 @@ namespace Netzy
 
         void Operations_Click(object sender, RoutedEventArgs e) => Dialogs.Operations(this);
 
-        void Report_Click(object sender, RoutedEventArgs e) => Dialogs.Report(this);
+        void History_Click(object sender, RoutedEventArgs e) => Dialogs.ShowHistory(this);
 
         void Privacy_Click(object sender, RoutedEventArgs e) => Dialogs.Privacy(this, firstRun: false);
 

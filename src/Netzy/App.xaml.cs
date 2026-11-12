@@ -44,9 +44,7 @@ namespace Netzy
 
         void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            var log = new RunLog("Unhandled error");
-            log.Line(e.Exception.ToString());
-            log.Save();
+            History.Add(new HistoryEntry { Kind = "error", Ok = false, Summary = e.Exception.Message, Log = e.Exception.ToString() });
             e.Handled = true;
             try { Dialogs.Message(MainWindow, Loc.T("error.title"), e.Exception.Message); }
             catch (Exception) { MessageBox.Show(e.Exception.Message, "Netzy", MessageBoxButton.OK, MessageBoxImage.Error); }

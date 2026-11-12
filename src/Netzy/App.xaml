@@ -159,6 +159,32 @@
       <Setter Property="Margin" Value="8,0,0,0"/>
     </Style>
 
+    <!-- Geçmiş listesi: seçili satır odak dışındayken de okunur kalsın (varsayılan açık gri yerine) -->
+    <Style x:Key="HistoryItem" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,0,4"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="Bd" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="10,7">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#1A2740"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#1E3A5F"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BlueBrush}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource CardBrush}"/>
       <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>

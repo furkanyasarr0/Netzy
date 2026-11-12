@@ -60,21 +60,6 @@ namespace Netzy.Core
 
         public static Adapter Primary() => InternetAdapters().FirstOrDefault();
 
-        public static bool IsUp(string name) =>
-            NetworkInterface.GetAllNetworkInterfaces().Any(n => n.Name == name && n.OperationalStatus == OperationalStatus.Up);
-
-        /// <summary>Bağdaştırıcı yeniden başlatıldıktan sonra tekrar bağlanmasını bekler.</summary>
-        public static void WaitUntilUp(IEnumerable<string> names, TimeSpan max)
-        {
-            var sw = Stopwatch.StartNew();
-            var pending = names.ToList();
-            while (pending.Count > 0 && sw.Elapsed < max)
-            {
-                pending.RemoveAll(IsUp);
-                if (pending.Count > 0) Thread.Sleep(1000);
-            }
-        }
-
         /// <summary>Bağdaştırıcıya elle girilmiş DNS sunucuları (boşsa DNS otomatik/DHCP'den gelir).</summary>
         public static string StaticDnsServers(string adapterId)
         {
@@ -367,6 +352,9 @@ namespace Netzy.Core
             foreach (var root in targets)
             {
                 if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
+                // TEMP ayarı yanlışlıkla C:\ veya Belgeler gibi bir klasörü gösterirse hiçbir şey silinmesin:
+                // yalnızca adı "Temp" olan klasörler temizlenir.
+                if (!string.Equals(Path.GetFileName(Path.GetFullPath(root).TrimEnd('\\')), "Temp", StringComparison.OrdinalIgnoreCase)) continue;
                 var walked = new List<string>();
                 var stack = new Stack<string>();
                 stack.Push(root);

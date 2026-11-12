@@ -39,7 +39,7 @@ namespace Netzy.Core
             ["net.offline"] = "Bağlantı yok",
 
             ["btn.operations"] = "İşlemler",
-            ["btn.report"] = "Rapor",
+            ["btn.history"] = "Geçmiş",
             ["btn.privacy"] = "Gizlilik",
             ["btn.download"] = "İndir",
             ["btn.rediagnose"] = "Yeniden teşhis et",
@@ -49,7 +49,6 @@ namespace Netzy.Core
             ["btn.close"] = "Kapat",
             ["btn.copy"] = "Raporu kopyala",
             ["btn.copied"] = "Kopyalandı ✓",
-            ["btn.openfolder"] = "Klasörü aç",
             ["btn.yes"] = "Evet",
             ["btn.no"] = "Hayır",
             ["btn.ok"] = "Tamam",
@@ -67,6 +66,7 @@ namespace Netzy.Core
             ["diag.fail"] = "Başarısız",
             ["diag.captive"] = "Giriş sayfası",
             ["diag.blocked"] = "Web engelli",
+            ["diag.proxyon"] = "etkin",
 
             ["advice.healthy"] = "Bağlantı sağlıklı görünüyor. Onarım gerekmiyor.",
             ["advice.checkcable"] = "Bağlı bir ağ bağdaştırıcısı yok. Kabloyu veya Wi-Fi bağlantısını kontrol edin.",
@@ -79,7 +79,7 @@ namespace Netzy.Core
             ["advice.deep"] = "Temel bağlantı var ama web trafiği engelleniyor. Derin Onarım önerilir.",
 
             ["quick.desc"] = "DNS, ARP ve NetBIOS önbelleklerini temizler, IP adresini yeniler, proxy'yi sıfırlar. Hiçbir ayarı kalıcı bozmaz, yeniden başlatma gerekmez.",
-            ["deep.desc"] = "Hızlı Onarım'a ek olarak Winsock, TCP/IP ve güvenlik duvarını sıfırlar, bağdaştırıcıları yeniden başlatır. Önce yedek alınır.",
+            ["deep.desc"] = "Hızlı Onarım'a ek olarak Winsock, TCP/IP ve güvenlik duvarını sıfırlar. Önce yedek alınır; sonrasında yeniden başlatma gerekir.",
 
             ["step.backup"] = "Ayarları yedekle",
             ["step.backup.desc"] = "Değiştirilecek ayarlar (güvenlik duvarı, IP/DNS, proxy) önce yedeklenir. Yedek alınamazsa hiçbir şey değiştirilmez.",
@@ -91,10 +91,6 @@ namespace Netzy.Core
             ["step.firewall.desc"] = "Güvenlik duvarı kurallarını varsayılana döndürür (yedekten geri alınabilir).",
             ["step.proxy"] = "Proxy ayarlarını sıfırla",
             ["step.proxy.desc"] = "Tarayıcı ve sistem proxy'sini kapatır. VPN veya zararlı yazılımdan kalan proxy, \"bağlı ama internet yok\" sorununa yol açar.",
-            ["step.dhcp"] = "DHCP istemci servisini yeniden başlat",
-            ["step.dhcp.desc"] = "Otomatik IP adresi alma servisini yeniden başlatır.",
-            ["step.adapters"] = "Ağ bağdaştırıcılarını yeniden başlat",
-            ["step.adapters.desc"] = "İnternete bağlı bağdaştırıcıları kapatıp açar.",
             ["step.arp"] = "ARP önbelleğini temizle",
             ["step.arp.desc"] = "IP-fiziksel adres eşleme tablosunu temizler.",
             ["step.netbios"] = "NetBIOS önbelleğini yenile",
@@ -109,8 +105,6 @@ namespace Netzy.Core
             ["detail.aborted"] = "atlandı (yedek alınamadı)",
             ["detail.backupfail"] = "yedek alınamadı, hiçbir ayar değiştirilmedi",
             ["detail.proxyoff"] = "etkin proxy kapatıldı",
-            ["detail.skipped"] = "servis durdurulamıyor, atlandı",
-            ["detail.noadapter"] = "bağlı bağdaştırıcı yok, atlandı",
             ["detail.staticip"] = "sabit IP kullanılıyor, atlandı",
             ["detail.cleaned"] = "{0:0.0} MB temizlendi",
 
@@ -138,15 +132,26 @@ namespace Netzy.Core
             ["undo.none"] = "Geri alınacak bir yedek yok.",
 
             ["confirm.deep.title"] = "Derin Onarım",
-            ["confirm.deep.body"] = "• Güvenlik duvarı kuralları varsayılana döner.\n• TCP/IP sıfırlanır; elle girilmiş sabit IP/DNS ayarları silinebilir.\n• İnternet bağlantısı birkaç saniye kesilir.\n\nTüm bu ayarlar önce yedeklenir ve \"Geri Al\" ile geri yüklenebilir. Devam edilsin mi?",
+            ["confirm.deep.body"] = "• Güvenlik duvarı kuralları varsayılana döner.\n• TCP/IP sıfırlanır; elle girilmiş sabit IP/DNS ayarları silinebilir.\n• İnternet bağlantısı kesilir ve çoğu zaman bilgisayarı yeniden başlatana kadar tam çalışmaz.\n\nİşlem bitince bilgisayarı yeniden başlatmanız gerekir. Tüm bu ayarlar önce yedeklenir ve \"Geri Al\" ile geri yüklenebilir. Devam edilsin mi?",
             ["admin.title"] = "Yönetici izni gerekli",
             ["admin.body"] = "Bu işlem Windows ağ ayarlarını değiştirdiği için yönetici yetkisi gerektirir.\n\nNetzy yönetici olarak yeniden başlatılsın mı?",
             ["admin.denied"] = "Yönetici izni verilmediği için işlem başlatılamadı.",
             ["done.title"] = "Onarım tamamlandı",
-            ["done.deepnote"] = "Winsock ve TCP/IP sıfırlamasının tamamen devreye girmesi için bilgisayarınızı yeniden başlatmanız önerilir.",
-
-            ["report.title"] = "Son işlem raporu",
-            ["report.empty"] = "Henüz bir işlem yapılmadı.",
+            ["done.deepnote"] = "Şimdi bilgisayarınızı yeniden başlatın: Winsock ve TCP/IP sıfırlaması ancak yeniden başlatmadan sonra tamamen devreye girer.",
+            ["done.nointernet"] = "İnternet bağlantısı henüz geri gelmedi. Bilgisayarı yeniden başlatın; sonra hâlâ bağlanamıyorsanız \"Geri Al\" ile ayarları eski haline döndürün.",
+            ["history.title"] = "İşlem geçmişi",
+            ["history.empty"] = "Henüz kayıtlı bir işlem yok.",
+            ["history.unavailable"] = "İşlem geçmişi okunamadı: {0}",
+            ["history.clear"] = "Geçmişi temizle",
+            ["history.clear.body"] = "Tüm işlem kayıtları silinecek. Bu geri alınamaz. Devam edilsin mi?",
+            ["history.steps"] = "Adımlar",
+            ["history.log"] = "Ayrıntılı kayıt",
+            ["run.quick"] = "Hızlı Onarım",
+            ["run.deep"] = "Derin Onarım",
+            ["run.dns"] = "DNS değişikliği",
+            ["run.undo"] = "Geri Al",
+            ["run.diagnose"] = "Sorun bulundu",
+            ["run.error"] = "Uygulama hatası",
             ["ops.title"] = "Onarım adımları",
             ["ops.quick"] = "⚡ Hızlı Onarım",
             ["ops.deep"] = "Derin Onarım",
@@ -163,17 +168,17 @@ namespace Netzy.Core
                 "GİZLİLİK (SIFIR VERİ TOPLAMA)\n" +
                 "• Netzy hiçbir kişisel veri, IP adresi, donanım kimliği veya kullanım istatistiği toplamaz, saklamaz ve göndermez.\n" +
                 "• İnternet yalnızca şunlar için kullanılır: bağlantı göstergesi (1.1.1.1 / 8.8.8.8 adreslerine kısa bağlantı), teşhis (Microsoft'un bağlantı testi msftconnecttest.com ve bir DNS sorgusu) ve GitHub'daki yeni sürüm kontrolü. Bu bağlantılarda hiçbir kişisel veri gönderilmez.\n" +
-                "• Ayarlar, raporlar ve yedekler yalnızca bu bilgisayarda (%LOCALAPPDATA%\\Netzy) tutulur.\n\n" +
+                "• Ayarlar, işlem geçmişi ve yedekler yalnızca bu bilgisayarda (%LOCALAPPDATA%\\Netzy) tutulur. Geçmişi istediğiniz zaman \"Geçmiş\" penceresinden silebilirsiniz.\n\n" +
                 "AÇIK KAYNAK (MIT LİSANSI)\n" +
                 "• Kaynak kodunun tamamı GitHub'da incelenebilir: github.com/furkanyasarr0/Netzy\n\n" +
                 "KULLANIM KOŞULLARI\n" +
                 "1. Ağ ayarlarını değiştirmek için yönetici izni gerekir.\n" +
                 "2. Onarım sırasında internet birkaç saniye kesilip yeniden bağlanır.\n" +
-                "3. Derin Onarım güvenlik duvarı, IP/DNS ve proxy ayarlarını önce yedekler; \"Geri Al\" ile eski haline dönebilirsiniz.\n" +
+                "3. Derin Onarım güvenlik duvarı, IP/DNS ve proxy ayarlarını önce yedekler; \"Geri Al\" ile eski haline dönebilirsiniz. Derin Onarım'dan sonra bilgisayarı yeniden başlatmanız gerekir.\n" +
                 "4. Netzy olduğu gibi sunulur; kullanım sorumluluğu kullanıcıya aittir.",
 
             ["cli.needadmin"] = "Bu komut yönetici yetkisi gerektirir. Komut istemini yönetici olarak açın.",
-            ["cli.log"] = "Rapor: {0}",
+            ["cli.history"] = "Geçmiş kaydı: #{0}",
             ["cli.usage"] =
                 "Netzy {0} — Windows ağ onarım aracı\n\n" +
                 "Kullanım: Netzy.exe [komut] [--lang tr|en]\n\n" +
@@ -194,7 +199,7 @@ namespace Netzy.Core
             ["net.offline"] = "Offline",
 
             ["btn.operations"] = "Steps",
-            ["btn.report"] = "Report",
+            ["btn.history"] = "History",
             ["btn.privacy"] = "Privacy",
             ["btn.download"] = "Download",
             ["btn.rediagnose"] = "Diagnose again",
@@ -204,7 +209,6 @@ namespace Netzy.Core
             ["btn.close"] = "Close",
             ["btn.copy"] = "Copy report",
             ["btn.copied"] = "Copied ✓",
-            ["btn.openfolder"] = "Open folder",
             ["btn.yes"] = "Yes",
             ["btn.no"] = "No",
             ["btn.ok"] = "OK",
@@ -222,6 +226,7 @@ namespace Netzy.Core
             ["diag.fail"] = "Failed",
             ["diag.captive"] = "Sign-in page",
             ["diag.blocked"] = "Web blocked",
+            ["diag.proxyon"] = "active",
 
             ["advice.healthy"] = "The connection looks healthy. No repair needed.",
             ["advice.checkcable"] = "No network adapter is connected. Check the cable or Wi-Fi connection.",
@@ -234,7 +239,7 @@ namespace Netzy.Core
             ["advice.deep"] = "Basic connectivity works but web traffic is blocked. Deep Repair is recommended.",
 
             ["quick.desc"] = "Clears the DNS, ARP and NetBIOS caches, renews the IP address and resets the proxy. Changes nothing permanently, no restart needed.",
-            ["deep.desc"] = "Quick Repair plus a reset of Winsock, TCP/IP and the firewall, and a restart of the adapters. Settings are backed up first.",
+            ["deep.desc"] = "Quick Repair plus a reset of Winsock, TCP/IP and the firewall. Settings are backed up first; a restart is needed afterwards.",
 
             ["step.backup"] = "Back up settings",
             ["step.backup.desc"] = "Settings that will change (firewall, IP/DNS, proxy) are backed up first. If the backup fails, nothing is changed.",
@@ -246,10 +251,6 @@ namespace Netzy.Core
             ["step.firewall.desc"] = "Restores the default firewall rules (restorable from backup).",
             ["step.proxy"] = "Reset proxy settings",
             ["step.proxy.desc"] = "Turns off the browser and system proxy. A proxy left behind by a VPN or malware causes \"connected but no internet\".",
-            ["step.dhcp"] = "Restart the DHCP client service",
-            ["step.dhcp.desc"] = "Restarts the service that gets an IP address automatically.",
-            ["step.adapters"] = "Restart network adapters",
-            ["step.adapters.desc"] = "Turns the adapters that connect to the internet off and on again.",
             ["step.arp"] = "Clear the ARP cache",
             ["step.arp.desc"] = "Clears the IP-to-hardware address table.",
             ["step.netbios"] = "Refresh the NetBIOS cache",
@@ -264,8 +265,6 @@ namespace Netzy.Core
             ["detail.aborted"] = "skipped (backup failed)",
             ["detail.backupfail"] = "backup failed, no settings were changed",
             ["detail.proxyoff"] = "active proxy turned off",
-            ["detail.skipped"] = "service cannot be stopped, skipped",
-            ["detail.noadapter"] = "no connected adapter, skipped",
             ["detail.staticip"] = "static IP in use, skipped",
             ["detail.cleaned"] = "{0:0.0} MB cleaned",
 
@@ -293,15 +292,26 @@ namespace Netzy.Core
             ["undo.none"] = "There is no backup to restore.",
 
             ["confirm.deep.title"] = "Deep Repair",
-            ["confirm.deep.body"] = "• Firewall rules return to their defaults.\n• TCP/IP is reset; manually entered static IP/DNS settings may be removed.\n• The internet connection drops for a few seconds.\n\nAll of these settings are backed up first and can be restored with \"Undo\". Continue?",
+            ["confirm.deep.body"] = "• Firewall rules return to their defaults.\n• TCP/IP is reset; manually entered static IP/DNS settings may be removed.\n• The internet connection drops and often does not fully work until you restart the computer.\n\nYou need to restart the computer when it finishes. All of these settings are backed up first and can be restored with \"Undo\". Continue?",
             ["admin.title"] = "Administrator rights needed",
             ["admin.body"] = "This changes Windows network settings, so it needs administrator rights.\n\nRestart Netzy as administrator?",
             ["admin.denied"] = "Administrator rights were not granted, so nothing was started.",
             ["done.title"] = "Repair finished",
-            ["done.deepnote"] = "Restart your computer so the Winsock and TCP/IP resets fully take effect.",
-
-            ["report.title"] = "Last run report",
-            ["report.empty"] = "Nothing has been run yet.",
+            ["done.deepnote"] = "Restart your computer now: the Winsock and TCP/IP resets only fully take effect after a restart.",
+            ["done.nointernet"] = "The internet connection has not come back yet. Restart the computer; if you still cannot connect, use \"Undo\" to restore your settings.",
+            ["history.title"] = "Activity history",
+            ["history.empty"] = "No activity recorded yet.",
+            ["history.unavailable"] = "Could not read the activity history: {0}",
+            ["history.clear"] = "Clear history",
+            ["history.clear.body"] = "All activity records will be deleted. This cannot be undone. Continue?",
+            ["history.steps"] = "Steps",
+            ["history.log"] = "Detailed log",
+            ["run.quick"] = "Quick Repair",
+            ["run.deep"] = "Deep Repair",
+            ["run.dns"] = "DNS change",
+            ["run.undo"] = "Undo",
+            ["run.diagnose"] = "Problem found",
+            ["run.error"] = "App error",
             ["ops.title"] = "Repair steps",
             ["ops.quick"] = "⚡ Quick Repair",
             ["ops.deep"] = "Deep Repair",
@@ -318,17 +328,17 @@ namespace Netzy.Core
                 "PRIVACY (ZERO DATA COLLECTION)\n" +
                 "• Netzy does not collect, store or send any personal data, IP address, hardware ID or usage statistics.\n" +
                 "• The internet is used only for: the connection badge (a short connection to 1.1.1.1 / 8.8.8.8), diagnosis (Microsoft's connection test msftconnecttest.com and one DNS query) and the new-version check on GitHub. No personal data is sent in these connections.\n" +
-                "• Settings, reports and backups stay on this computer only (%LOCALAPPDATA%\\Netzy).\n\n" +
+                "• Settings, activity history and backups stay on this computer only (%LOCALAPPDATA%\\Netzy). You can delete the history at any time in the \"History\" window.\n\n" +
                 "OPEN SOURCE (MIT LICENSE)\n" +
                 "• All source code can be reviewed on GitHub: github.com/furkanyasarr0/Netzy\n\n" +
                 "TERMS OF USE\n" +
                 "1. Changing network settings requires administrator rights.\n" +
                 "2. During a repair the internet drops for a few seconds and reconnects.\n" +
-                "3. Deep Repair backs up the firewall, IP/DNS and proxy settings first; you can go back with \"Undo\".\n" +
+                "3. Deep Repair backs up the firewall, IP/DNS and proxy settings first; you can go back with \"Undo\". You need to restart the computer after a Deep Repair.\n" +
                 "4. Netzy is provided as is; you use it at your own responsibility.",
 
             ["cli.needadmin"] = "This command needs administrator rights. Open the command prompt as administrator.",
-            ["cli.log"] = "Report: {0}",
+            ["cli.history"] = "History record: #{0}",
             ["cli.usage"] =
                 "Netzy {0} — Windows network repair tool\n\n" +
                 "Usage: Netzy.exe [command] [--lang tr|en]\n\n" +

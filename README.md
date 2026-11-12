@@ -13,11 +13,11 @@ An open-source network diagnosis and repair tool for Windows 10 and 11. It finds
 
 - **Connection diagnosis:** On startup, Netzy checks the network adapter, router, DNS and internet access, then tells you where the problem is and which repair to run. It also detects hotel/café Wi-Fi sign-in pages and active proxy settings.
 - **⚡ Quick Repair:** Fixes most everyday problems without changing anything permanently. No restart needed.
-- **Deep Repair:** Resets Winsock, TCP/IP and the firewall, and restarts the network adapters. Settings are backed up first.
+- **Deep Repair:** Resets Winsock, TCP/IP and the firewall. Settings are backed up first, and a restart is needed afterwards.
 - **↺ Undo:** Firewall rules, IP/DNS settings and proxy settings are backed up before they change. One click restores them to how they were before the last change.
 - **Before/after results:** Measures latency and DNS response time before and after a repair (e.g. `Latency: 140 ms → 32 ms`).
 - **DNS switch:** One click to switch between Automatic, Cloudflare, Google and Quad9.
-- **Report:** A command-by-command log of every run, with a "Copy report" button for pasting into a GitHub issue.
+- **Activity history:** Every repair, DNS change, undo, detected problem and error is saved in a local database. Open **History** to see all of them with their steps, errors and full command log; copy one for a GitHub issue or clear the history at any time.
 - **Command-line mode:** For IT admins and scripts (`Netzy.exe --quick`).
 - **Turkish / English** interface.
 
@@ -30,15 +30,15 @@ An open-source network diagnosis and repair tool for Windows 10 and 11. It finds
 | Reset TCP/IP (`netsh int ip reset`, `netsh int ipv6 reset`) | | ✓ |
 | Reset the firewall (`netsh advfirewall reset`) | | ✓ |
 | Reset proxy settings (browser + `netsh winhttp reset proxy`) | ✓ | ✓ |
-| Restart the DHCP client service | | ✓ |
-| Restart network adapters | | ✓ |
 | Clear the ARP cache (`netsh interface ip delete arpcache`) | ✓ | ✓ |
 | Refresh the NetBIOS cache (`nbtstat -R`, `-RR`) | ✓ | ✓ |
 | Renew the IP address (`ipconfig /release` + `/renew`, DHCP only) | ✓ | ✓ |
 | Clear the DNS cache (`ipconfig /flushdns`, `/registerdns`) | ✓ | ✓ |
-| Clean temporary files (older than 24 hours, never follows junctions) | | ✓ |
+| Clean temporary files (only folders named `Temp`, files older than 24 hours, never follows junctions) | | ✓ |
 
-After a Deep Repair, restart your computer so the Winsock and TCP/IP resets fully take effect.
+After a Deep Repair, **restart your computer**: the Winsock and TCP/IP resets only fully take effect after a restart, and the connection may not work until then.
+
+Netzy never restarts the DHCP client service or turns network adapters off and on. Stopping the DHCP service also stops the Wi-Fi service (WLAN AutoConfig) and VPN services, and an adapter that fails to turn back on stays disabled.
 
 ## 💻 Command Line
 
@@ -59,7 +59,7 @@ Exit codes: `0` success, `1` error or problem found, `2` bad usage, `3` not admi
 
 - Netzy **does not collect, store or send** any personal data, IP address, hardware ID or usage statistics.
 - The internet is used only for: the connection badge (a short connection to 1.1.1.1 / 8.8.8.8), diagnosis (Microsoft's connection test `msftconnecttest.com` and one DNS query) and the new-version check on GitHub.
-- Settings, reports and backups stay on your computer only: `%LOCALAPPDATA%\Netzy`.
+- Settings, activity history (`history.db`) and backups stay on your computer only: `%LOCALAPPDATA%\Netzy`.
 
 ## 🛡️ Security and Antivirus
 

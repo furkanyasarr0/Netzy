@@ -95,32 +95,175 @@ namespace Netzy.Ui
             return accepted;
         }
 
-        public static void Report(Window owner)
+        /// <summary>İşlem geçmişi: solda tüm kayıtlar (en yeni üstte), sağda seçilen kaydın adımları, hataları ve ayrıntılı kaydı.</summary>
+        public static void ShowHistory(Window owner)
         {
-            var box = new TextBox
+            List<HistoryEntry> entries;
+            string error = null;
+            try { entries = Core.History.List(); }
+            catch (Exception e) when (IsHistoryError(e))
             {
-                Text = RunLog.LatestText() ?? Loc.T("report.empty"),
+                entries = new List<HistoryEntry>();
+                error = Loc.T("history.unavailable", e.Message);
+            }
+
+            var list = new ListBox
+            {
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                ItemContainerStyle = (Style)Application.Current.FindResource("HistoryItem"),
+            };
+            ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Disabled);
+            foreach (var e in entries) list.Items.Add(HistoryRow(e));
+
+            var detail = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+            var logBox = new TextBox
+            {
                 IsReadOnly = true,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 11.5,
-                Background = Brushes.Transparent,
+                FontSize = 11,
+                Background = Res("CardBrush"),
                 Foreground = Res("SoftTextBrush"),
-                BorderThickness = new Thickness(0),
+                BorderBrush = Res("LineBrush"),
+                Padding = new Thickness(8, 6, 8, 6),
+                Visibility = Visibility.Collapsed,
             };
+            var right = new Grid();
+            right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            right.Children.Add(new ScrollViewer { Content = detail, MaxHeight = 260, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+            Grid.SetRow(logBox, 1);
+            right.Children.Add(logBox);
+
+            HistoryEntry current = null;
+            void ShowEmpty(string text)
+            {
+                current = null;
+                detail.Children.Clear();
+                detail.Children.Add(new TextBlock { Text = text, Foreground = Res("MutedBrush"), FontSize = 12.5, TextWrapping = TextWrapping.Wrap });
+                logBox.Visibility = Visibility.Collapsed;
+            }
+            void ShowEntry(HistoryEntry e)
+            {
+                try { current = Core.History.Get(e.Id) ?? e; }
+                catch (Exception ex) when (IsHistoryError(ex)) { current = e; }
+                RenderHistoryDetail(detail, current);
+                logBox.Text = current.Log;
+                logBox.Visibility = string.IsNullOrEmpty(current.Log) ? Visibility.Collapsed : Visibility.Visible;
+            }
+            list.SelectionChanged += (s, a) =>
+            {
+                if (list.SelectedItem is FrameworkElement row && row.Tag is HistoryEntry e) ShowEntry(e);
+            };
+
+            var body = new Grid();
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+            body.ColumnDefinitions.Add(new ColumnDefinition());
+            body.Children.Add(list);
+            Grid.SetColumn(right, 2);
+            body.Children.Add(right);
+
+            Window w = null;
             Button copy = null;
             copy = Button(Loc.T("btn.copy"), "DialogSecondaryButton", () =>
             {
+                if (current == null) return;
                 for (int i = 0; i < 5; i++)
                 {
-                    try { Clipboard.SetText(box.Text); copy.Content = Loc.T("btn.copied"); return; }
+                    try { Clipboard.SetText(HistoryText(current)); copy.Content = Loc.T("btn.copied"); return; }
                     catch (COMException) { System.Threading.Thread.Sleep(50); }   // pano başka bir programda meşgul
                 }
             });
-            var folder = Button(Loc.T("btn.openfolder"), "DialogSecondaryButton", () => Elevation.OpenFolder(Paths.Logs));
-            InfoWindow(owner, Loc.T("report.title"), box, new List<Button> { copy, folder }, Loc.T("btn.close")).ShowDialog();
+            var clear = Button(Loc.T("history.clear"), "DialogSecondaryButton", () =>
+            {
+                if (list.Items.Count == 0 || !Confirm(w, Loc.T("history.clear"), Loc.T("history.clear.body"))) return;
+                try
+                {
+                    Core.History.Clear();
+                    list.Items.Clear();
+                    ShowEmpty(Loc.T("history.empty"));
+                }
+                catch (Exception ex) when (IsHistoryError(ex)) { ShowEmpty(Loc.T("history.unavailable", ex.Message)); }
+            });
+
+            w = InfoWindow(owner, Loc.T("history.title"), body, new List<Button> { copy, clear }, Loc.T("btn.close"));
+            w.Width = 920;
+            w.Height = 620;
+            w.MinWidth = 760;
+            if (list.Items.Count > 0) list.SelectedIndex = 0;
+            else ShowEmpty(error ?? Loc.T("history.empty"));
+            w.ShowDialog();
+        }
+
+        static bool IsHistoryError(Exception e) =>
+            e is SqliteException || e is DllNotFoundException || e is EntryPointNotFoundException || e is System.IO.IOException || e is UnauthorizedAccessException;
+
+        static UIElement HistoryRow(HistoryEntry e)
+        {
+            var top = new DockPanel();
+            var dot = new TextBlock { Text = "●", FontSize = 10, Foreground = Res(e.Ok ? "GreenBrush" : "RedBrush"), Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(dot, Dock.Left);
+            top.Children.Add(dot);
+            var count = new TextBlock { Text = e.StepTotal > 0 ? $"{e.StepOk}/{e.StepTotal}" : "", FontSize = 11, Foreground = Res("MutedBrush"), VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(count, Dock.Right);
+            top.Children.Add(count);
+            top.Children.Add(new TextBlock { Text = Loc.T("run." + e.Kind), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Res("TextBrush") });
+
+            var row = new StackPanel { Tag = e };
+            row.Children.Add(top);
+            row.Children.Add(new TextBlock
+            {
+                Text = e.Time.ToString("g", Loc.Culture) + (e.Summary != null ? " · " + e.Summary : ""),
+                FontSize = 11,
+                Foreground = Res("MutedBrush"),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(17, 2, 0, 0),
+            });
+            return row;
+        }
+
+        static void RenderHistoryDetail(StackPanel detail, HistoryEntry e)
+        {
+            detail.Children.Clear();
+            detail.Children.Add(new TextBlock { Text = Loc.T("run." + e.Kind), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = Res("TextBrush") });
+            detail.Children.Add(new TextBlock
+            {
+                Text = e.Time.ToString("F", Loc.Culture) + "  ·  " + (e.Ok ? "✓ " + Loc.T("status.ok") : "✗ " + Loc.T("status.error")),
+                FontSize = 11.5,
+                Foreground = Res(e.Ok ? "GreenBrush" : "RedBrush"),
+                Margin = new Thickness(0, 2, 0, 6),
+            });
+            if (e.Summary != null)
+                detail.Children.Add(new TextBlock { Text = e.Summary, TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = Res(e.Ok ? "SoftTextBrush" : "AmberBrush"), Margin = new Thickness(0, 0, 0, 6) });
+            if (e.Kind == "quick" || e.Kind == "deep")
+                detail.Children.Add(new TextBlock { Text = Format.Metrics(e.Before, e.After), FontSize = 12, Foreground = Res("AccentBrush"), Margin = new Thickness(0, 0, 0, 6) });
+            if (e.Steps.Count == 0) return;
+            detail.Children.Add(new TextBlock { Text = Loc.T("history.steps"), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Res("MutedBrush"), Margin = new Thickness(0, 4, 0, 3) });
+            foreach (var s in e.Steps)
+                detail.Children.Add(new TextBlock
+                {
+                    Text = (s.Ok ? "✓  " : "✗  ") + Loc.T(s.Key) + (s.Detail != null ? " — " + s.Detail : ""),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 12,
+                    Foreground = Res(s.Ok ? "SoftTextBrush" : "RedBrush"),
+                    Margin = new Thickness(0, 1, 0, 1),
+                });
+        }
+
+        static string HistoryText(HistoryEntry e)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"{Loc.T("run." + e.Kind)} — {e.Time.ToString("F", Loc.Culture)} — {(e.Ok ? "OK" : Loc.T("status.error"))}");
+            if (e.Summary != null) sb.AppendLine(e.Summary);
+            if (e.Kind == "quick" || e.Kind == "deep") sb.AppendLine(Format.Metrics(e.Before, e.After));
+            foreach (var s in e.Steps) sb.AppendLine($"{(s.Ok ? "OK " : "ERR")} {Loc.T(s.Key)}{(s.Detail != null ? " — " + s.Detail : "")}");
+            sb.AppendLine().Append(e.Log);
+            return sb.ToString();
         }
 
         public static void Operations(Window owner)

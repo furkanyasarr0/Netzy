@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["v*", "V*"]
   pull_request:
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
         shell: pwsh
         run: |
           # Etiket derlemesinde sürüm etiketten gelir (v2.1.0 → 2.1.0); uygulama içindeki güncelleme kontrolü bunu kullanır
-          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '' }
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v', 'V') } else { '' }
           $versionArg = if ($version) { "-p:Version=$version" } else { '' }
           dotnet build src/Netzy/Netzy.csproj -c Release --nologo $versionArg
           New-Item -ItemType Directory -Force dist | Out-Null

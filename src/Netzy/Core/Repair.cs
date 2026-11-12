@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Management;
 using System.Net;
-using System.ServiceProcess;
 using System.Text;
-using System.Threading;
 
 namespace Netzy.Core
 {
@@ -87,8 +84,10 @@ namespace Netzy.Core
             }
         }
 
-        public static string KindName(string kind) =>
-            kind == FirewallFile ? Loc.T("kind.firewall") : kind == InterfacesFile ? Loc.T("kind.interfaces") : Loc.T("kind.proxy");
+        public static string KindKey(string kind) =>
+            kind == FirewallFile ? "kind.firewall" : kind == InterfacesFile ? "kind.interfaces" : "kind.proxy";
+
+        public static string KindName(string kind) => Loc.T(KindKey(kind));
 
         public static string Describe(Dictionary<string, string> latest) =>
             string.Join("\n", latest.Select(kv => "• " + KindName(kv.Key) + " — " + SetTime(kv.Value)));
@@ -101,10 +100,11 @@ namespace Netzy.Core
                 : name;
         }
 
-        /// <summary>En yeni yedekleri geri yükler; (tür, başarılı mı) listesi döner.</summary>
-        public static List<(string Kind, bool Ok)> Restore(RunLog log)
+        /// <summary>En yeni yedekleri geri yükler, geçmişe yazar; (tür, başarılı mı) listesi döner.</summary>
+        public static List<(string Kind, bool Ok)> Restore()
         {
-            var results = new List<(string, bool)>();
+            var log = new RunLog("Undo");
+            var results = new List<(string Kind, bool Ok)>();
             foreach (var kv in Latest())
             {
                 bool ok;
@@ -135,6 +135,13 @@ namespace Netzy.Core
                 }
                 results.Add((kv.Key, ok));
             }
+            History.Add(new HistoryEntry
+            {
+                Kind = "undo",
+                Ok = results.All(r => r.Ok),
+                Log = log.Text,
+                Steps = results.Select(r => new HistoryStep { Key = KindKey(r.Kind), Ok = r.Ok }).ToList(),
+            });
             return results;
         }
     }
@@ -166,7 +173,10 @@ namespace Netzy.Core
             return a == null ? null : Match(NetInfo.StaticDnsServers(a.Id));
         }
 
-        public static (bool Ok, string LogPath) Apply(string choice)
+        public static string DisplayName(string choice) =>
+            choice == "auto" ? Loc.T("dns.auto") : choice == "quad9" ? "Quad9" : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(choice);
+
+        public static (bool Ok, long? HistoryId) Apply(string choice)
         {
             var log = new RunLog("DNS → " + choice);
             var adapters = NetInfo.InternetAdapters();
@@ -189,7 +199,8 @@ namespace Netzy.Core
                 }
                 log.Cmd(ProcessRunner.Run("ipconfig.exe", "/flushdns"));
             }
-            return (ok, log.Save());
+            var id = History.Add(new HistoryEntry { Kind = "dns", Ok = ok, Summary = "DNS → " + DisplayName(choice), Log = log.Text });
+            return (ok, id);
         }
 
         static bool Run(RunLog log, string args)
@@ -246,6 +257,23 @@ namespace Netzy.Core
             if (!r.TcpOk) return Advice.Isp;
             return Advice.Deep;
         }
+
+        public static string Describe(DiagnosisResult r) => string.Join("\n",
+            $"{Loc.T("diag.adapter")}: {(!r.AdapterUp ? Loc.T("diag.none") : r.HasIp ? r.AdapterName : r.AdapterName + " — " + Loc.T("diag.noip"))}",
+            $"{Loc.T("diag.gateway")}: {(r.GatewayOk ? r.Gateway + " (" + Format.Ms(r.GatewayMs) + ")" : r.Gateway == null ? "—" : r.Gateway + " — " + Loc.T("diag.unreachable"))}",
+            $"{Loc.T("diag.dns")}: {(r.DnsOk ? Format.Ms(r.DnsMs) : Loc.T("diag.fail"))}",
+            $"{Loc.T("diag.internet")}: {(r.HttpOk ? Format.Ms(r.InternetMs) : r.CaptivePortal ? Loc.T("diag.captive") : r.TcpOk ? Loc.T("diag.blocked") : Loc.T("diag.fail"))}",
+            $"Proxy: {(r.ProxyActive ? Loc.T("diag.proxyon") : "—")}");
+
+        /// <summary>Sorun bulan teşhisleri geçmişe yazar. Sağlıklı sonuçlar yazılmaz; yoksa her açılış bir kayıt eklerdi.</summary>
+        public static void RecordIfProblem(DiagnosisResult r)
+        {
+            var advice = Recommend(r);
+            if (advice == Advice.Healthy) return;
+            var log = new RunLog("Diagnosis");
+            foreach (var line in Describe(r).Split('\n')) log.Line(line);
+            History.Add(new HistoryEntry { Kind = "diagnose", Ok = false, Summary = Loc.T("advice." + advice.ToString().ToLowerInvariant()), Log = log.Text });
+        }
     }
 
     internal sealed class StepResult
@@ -259,7 +287,7 @@ namespace Netzy.Core
     internal sealed class RepairContext
     {
         public RunLog Log;
-        public List<Adapter> Adapters;   // çalışma başında yakalanır; bağdaştırıcı yeniden başlarken liste boşalmasın
+        public List<Adapter> Adapters;   // çalışma başında yakalanır; TCP/IP sıfırlanırken liste değişebilir
 
         public bool RunOk(string exe, string args, int timeoutMs = 90000)
         {
@@ -287,7 +315,8 @@ namespace Netzy.Core
     {
         public readonly List<(string Key, StepResult Result)> Results = new List<(string, StepResult)>();
         public Metrics Before, After;
-        public string LogPath;
+        public long? HistoryId;
+        public bool InternetBack => After?.LatencyMs != null;
         public int OkCount => Results.Count(r => r.Result.Ok);
         public bool AllOk => Results.All(r => r.Result.Ok);
     }
@@ -306,12 +335,10 @@ namespace Netzy.Core
                 list.Add(S("tcpip", c => c.RunAll(("netsh.exe", "int ip reset"), ("netsh.exe", "int ipv6 reset"))));
                 list.Add(S("firewall", c => c.RunAll(("netsh.exe", "advfirewall reset"))));
             }
+            // DHCP servisi ve ağ kartları bilerek yeniden başlatılmaz: DHCP servisini durdurmak Wi-Fi servisini (WlanSvc)
+            // ve VPN servislerini de durdurur; kartı kapatıp açmak ise başarısız olursa kartı kalıcı olarak kapalı bırakır.
+            // IP yenileme ve Derin Onarım sonrası yeniden başlatma aynı işi bu riskler olmadan yapar.
             list.Add(S("proxy", ResetProxy));
-            if (deep)
-            {
-                list.Add(S("dhcp", RestartDhcp));
-                list.Add(S("adapters", RestartAdapters));
-            }
             list.Add(S("arp", c => c.RunAll(("netsh.exe", "interface ip delete arpcache"))));
             list.Add(S("netbios", c => c.RunAll(("nbtstat.exe", "-R"), ("nbtstat.exe", "-RR"))));
             list.Add(S("renew", Renew));
@@ -353,7 +380,16 @@ namespace Netzy.Core
             Probes.WaitForInternet(TimeSpan.FromSeconds(25));
             summary.After = Probes.Measure();
             log.Line($"after: latency={summary.After.LatencyMs?.ToString() ?? "-"} ms, dns={summary.After.DnsMs?.ToString() ?? "-"} ms");
-            summary.LogPath = log.Save();
+            summary.HistoryId = History.Add(new HistoryEntry
+            {
+                Kind = deep ? "deep" : "quick",
+                Ok = summary.AllOk && summary.InternetBack,
+                Summary = summary.InternetBack ? null : Loc.T("done.nointernet"),
+                Before = summary.Before,
+                After = summary.After,
+                Log = log.Text,
+                Steps = summary.Results.Select(r => new HistoryStep { Key = "step." + r.Key, Ok = r.Result.Ok, Detail = r.Result.Detail }).ToList(),
+            });
             return summary;
         }
 
@@ -371,63 +407,6 @@ namespace Netzy.Core
             c.Log.Line($"{(ok ? "OK " : "ERR")} wininet proxy (was active: {before.IsActive})");
             ok &= c.RunOk("netsh.exe", "winhttp reset proxy");
             return ok ? StepResult.Success(before.IsActive ? Loc.T("detail.proxyoff") : null) : StepResult.Fail();
-        }
-
-        static StepResult RestartDhcp(RepairContext c)
-        {
-            using (var sc = new ServiceController("Dhcp"))
-            {
-                if (!sc.CanStop) return StepResult.Success(Loc.T("detail.skipped"));
-                var dependents = sc.DependentServices.Where(d => d.Status == ServiceControllerStatus.Running).Select(d => d.ServiceName).ToList();
-                sc.Stop();   // bağımlı servisleri de durdurur
-                sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
-                sc.Start();
-                sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
-                foreach (var name in dependents)
-                {
-                    using (var d = new ServiceController(name))
-                    {
-                        if (d.Status != ServiceControllerStatus.Stopped) continue;
-                        d.Start();
-                        d.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
-                    }
-                }
-                c.Log.Line("OK  service Dhcp restarted" + (dependents.Count > 0 ? " (+ " + string.Join(", ", dependents) + ")" : ""));
-                return StepResult.Success();
-            }
-        }
-
-        static StepResult RestartAdapters(RepairContext c)
-        {
-            var names = c.Adapters.Select(a => a.Name).ToList();
-            if (names.Count == 0) return StepResult.Success(Loc.T("detail.noadapter"));
-            bool ok = true;
-            foreach (var name in names)
-            {
-                var wql = "SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionID = '" + name.Replace("\\", "\\\\").Replace("'", "\\'") + "'";
-                using (var searcher = new ManagementObjectSearcher(wql))
-                using (var found = searcher.Get())
-                {
-                    foreach (ManagementObject mo in found)
-                    {
-                        using (mo)
-                        {
-                            var disable = Convert.ToUInt32(mo.InvokeMethod("Disable", null));
-                            Thread.Sleep(1500);
-                            var enable = Convert.ToUInt32(mo.InvokeMethod("Enable", null));
-                            if (enable != 0)
-                            {
-                                Thread.Sleep(2000);   // bağdaştırıcının kapalı kalmaması için bir kez daha dene
-                                enable = Convert.ToUInt32(mo.InvokeMethod("Enable", null));
-                            }
-                            c.Log.Line($"{(enable == 0 ? "OK " : "ERR")} adapter '{name}' disable={disable} enable={enable}");
-                            ok &= enable == 0;
-                        }
-                    }
-                }
-            }
-            NetInfo.WaitUntilUp(names, TimeSpan.FromSeconds(20));
-            return ok ? StepResult.Success() : StepResult.Fail();
         }
 
         static StepResult Renew(RepairContext c)

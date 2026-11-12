@@ -16,7 +16,7 @@ namespace Netzy.Core
         public static readonly string Root =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Netzy");
         public static readonly string Backups = Path.Combine(Root, "backups");
-        public static readonly string Logs = Path.Combine(Root, "logs");
+        public static readonly string Logs = Path.Combine(Root, "logs");   // yalnızca geçmiş veritabanı açılamazsa kullanılır
         public static readonly string ConfigFile = Path.Combine(Root, "config.ini");
         public static string ExePath => Assembly.GetEntryAssembly()?.Location ?? Process.GetCurrentProcess().MainModule.FileName;
     }
@@ -239,10 +239,9 @@ namespace Netzy.Core
         }
     }
 
-    /// <summary>Bir işlemin adım adım kaydı; "Rapor" penceresinde gösterilir ve dosyaya yazılır.</summary>
+    /// <summary>Bir işlemin adım adım metin kaydı; işlem geçmişine (History) ayrıntılı kayıt olarak yazılır.</summary>
     internal sealed class RunLog
     {
-        const int KeepLogs = 20;
         readonly StringBuilder _sb = new StringBuilder();
 
         public RunLog(string title)
@@ -264,32 +263,6 @@ namespace Netzy.Core
             var output = r.Output.Length > 1500 ? r.Output.Substring(0, 1500) + " …" : r.Output;
             foreach (var l in output.Split('\n'))
                 if (l.Trim().Length > 0) _sb.AppendLine("           " + l.TrimEnd());
-        }
-
-        public string Save()
-        {
-            try
-            {
-                Directory.CreateDirectory(Paths.Logs);
-                var path = Path.Combine(Paths.Logs, $"{DateTime.Now:yyyyMMdd-HHmmss}.txt");
-                File.WriteAllText(path, Text, Encoding.UTF8);
-                var old = Directory.GetFiles(Paths.Logs, "*.txt");
-                Array.Sort(old, StringComparer.Ordinal);
-                for (int i = 0; i < old.Length - KeepLogs; i++) File.Delete(old[i]);
-                return path;
-            }
-            catch (IOException) { return null; }
-            catch (UnauthorizedAccessException) { return null; }
-        }
-
-        public static string LatestText()
-        {
-            if (!Directory.Exists(Paths.Logs)) return null;
-            var files = Directory.GetFiles(Paths.Logs, "*.txt");
-            if (files.Length == 0) return null;
-            Array.Sort(files, StringComparer.Ordinal);
-            try { return File.ReadAllText(files[files.Length - 1], Encoding.UTF8); }
-            catch (IOException) { return null; }
         }
     }
 }

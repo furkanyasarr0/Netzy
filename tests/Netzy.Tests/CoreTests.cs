@@ -96,6 +96,98 @@ namespace Netzy.Tests
 
             Assert.True(File.Exists(outside));
         }
+
+        [Fact]
+        public void RefusesFolderNotNamedTemp()
+        {
+            // TEMP ayarı yanlışlıkla Belgeler gibi bir klasörü gösterirse hiçbir şey silinmemeli
+            var doc = MakeFile(@"Documents\thesis.docx");
+            var sub = MakeFile(@"Documents\old\notes.txt");
+
+            long bytes = TempCleaner.Clean(new[] { Path.Combine(_root, "Documents") }, null, TimeSpan.FromHours(24), Now);
+
+            Assert.Equal(0, bytes);
+            Assert.True(File.Exists(doc));
+            Assert.True(File.Exists(sub));
+        }
+    }
+
+    public class RepairStepTests
+    {
+        [Fact]
+        public void NeverRestartsDhcpServiceOrAdapters()
+        {
+            // DHCP servisini durdurmak Wi-Fi (WlanSvc) ve VPN servislerini de durdurur; kartı kapatıp açmak kartı kapalı bırakabilir
+            var keys = Repairs.Steps(deep: true).Concat(Repairs.Steps(deep: false)).Select(s => s.Key).ToList();
+            Assert.DoesNotContain("dhcp", keys);
+            Assert.DoesNotContain("adapters", keys);
+        }
+
+        [Fact]
+        public void BackupComesFirstAndStopsTheRunIfItFails()
+        {
+            foreach (var deep in new[] { false, true })
+            {
+                var first = Repairs.Steps(deep)[0];
+                Assert.Equal("backup", first.Key);
+                Assert.True(first.Critical);
+            }
+        }
+    }
+
+    public class HistoryTests : IDisposable
+    {
+        readonly string _oldPath = History.DbPath;
+        readonly string _dir = Path.Combine(Path.GetTempPath(), "netzy-history-" + Guid.NewGuid().ToString("N"));
+
+        public HistoryTests() => History.DbPath = Path.Combine(_dir, "history.db");
+
+        public void Dispose()
+        {
+            History.DbPath = _oldPath;
+            Directory.Delete(_dir, true);
+        }
+
+        [Fact]
+        public void RecordsEveryRunWithStepsErrorsAndLog()
+        {
+            var deepId = History.Add(new HistoryEntry
+            {
+                Kind = "deep",
+                Ok = false,
+                Summary = "İnternet geri gelmedi",
+                Before = new Metrics { LatencyMs = 140, DnsMs = 80 },
+                After = new Metrics { LatencyMs = null, DnsMs = 12 },
+                Log = "netsh winsock reset (exit 1)\nAccess is denied — 'quoted' text",
+                Steps =
+                {
+                    new HistoryStep { Key = "step.backup", Ok = true },
+                    new HistoryStep { Key = "step.winsock", Ok = false, Detail = "exit 1" },
+                },
+            });
+            var dnsId = History.Add(new HistoryEntry { Kind = "dns", Ok = true, Summary = "DNS → Cloudflare", Log = "ok" });
+
+            Assert.NotNull(deepId);
+            Assert.NotNull(dnsId);
+
+            var all = History.List();
+            Assert.Equal(new[] { dnsId.Value, deepId.Value }, all.Select(e => e.Id));   // en yeni üstte
+            Assert.Equal(2, all[1].StepTotal);
+            Assert.Equal(1, all[1].StepOk);
+
+            var deep = History.Get(deepId.Value);
+            Assert.False(deep.Ok);
+            Assert.Equal("İnternet geri gelmedi", deep.Summary);
+            Assert.Equal(140, deep.Before.LatencyMs);
+            Assert.Null(deep.After.LatencyMs);
+            Assert.Contains("'quoted'", deep.Log);
+            Assert.Equal(new[] { "step.backup", "step.winsock" }, deep.Steps.Select(s => s.Key));
+            Assert.Equal("exit 1", deep.Steps[1].Detail);
+            Assert.False(deep.Steps[1].Ok);
+
+            History.Clear();
+            Assert.Empty(History.List());
+        }
     }
 
     public class DiagnosisTests
@@ -263,7 +355,9 @@ namespace Netzy.Tests
         public void EveryStepAndAdviceHasText()
         {
             var keys = Repairs.Steps(deep: true).SelectMany(s => new[] { "step." + s.Key, "step." + s.Key + ".desc" })
-                .Concat(Enum.GetNames(typeof(Advice)).Select(a => "advice." + a.ToLowerInvariant()));
+                .Concat(Enum.GetNames(typeof(Advice)).Select(a => "advice." + a.ToLowerInvariant()))
+                .Concat(new[] { "quick", "deep", "dns", "undo", "diagnose", "error" }.Select(k => "run." + k))   // geçmiş kayıt türleri
+                .Concat(Backup.Kinds.Select(Backup.KindKey));
             Assert.All(keys, k => Assert.True(Loc.Tr.ContainsKey(k), "missing key: " + k));
         }
 
